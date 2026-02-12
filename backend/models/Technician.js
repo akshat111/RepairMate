@@ -38,6 +38,10 @@ const technicianSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
         },
+        isOnline: {
+            type: Boolean,
+            default: false,
+        },
         serviceArea: {
             type: String,
             trim: true,
@@ -97,7 +101,7 @@ const technicianSchema = new mongoose.Schema(
 
 // ── Indexes ───────────────────────────────────────────
 technicianSchema.index({ specializations: 1 });
-technicianSchema.index({ isAvailable: 1, verificationStatus: 1 });
+technicianSchema.index({ isAvailable: 1, isOnline: 1, verificationStatus: 1 });
 technicianSchema.index({ location: '2dsphere' }); // Geo queries (nearby technicians)
 
 // ── Virtual: populate user details ────────────────────

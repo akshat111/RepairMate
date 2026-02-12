@@ -9,6 +9,8 @@ const {
     rejectTechnician,
 } = require('../controllers/technicianController');
 const { protect, authorize } = require('../middleware/auth');
+const validate = require('../middleware/validate');
+const schemas = require('../validators/schemas');
 
 const router = express.Router();
 
@@ -16,14 +18,20 @@ const router = express.Router();
 router.use(protect);
 
 // ── Technician self-service routes ────────────────────
-router.post('/register', registerTechnician);
+router.post('/register', validate(schemas.technician.register), registerTechnician);
 router.get('/me', getMyProfile);
-router.put('/me', updateMyProfile);
+router.put('/me', validate(schemas.technician.update), updateMyProfile);
 
 // ── Admin-only routes ─────────────────────────────────
-router.get('/', authorize('admin'), getAllTechnicians);
-router.get('/:id', authorize('admin'), getTechnician);
-router.patch('/:id/approve', authorize('admin'), approveTechnician);
-router.patch('/:id/reject', authorize('admin'), rejectTechnician);
+router.get('/', authorize('admin'), validate(schemas.technician.query, 'query'), getAllTechnicians);
+router.get('/:id', authorize('admin'), validate(schemas.mongoIdParam, 'params'), getTechnician);
+router.patch('/:id/approve', authorize('admin'), validate(schemas.mongoIdParam, 'params'), approveTechnician);
+router.patch(
+    '/:id/reject',
+    authorize('admin'),
+    validate(schemas.mongoIdParam, 'params'),
+    validate(schemas.technician.reject),
+    rejectTechnician
+);
 
 module.exports = router;

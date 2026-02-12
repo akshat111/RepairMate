@@ -2,6 +2,7 @@ const Booking = require('../models/Booking');
 const Technician = require('../models/Technician');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
+const { findBestMatch } = require('../services/technicianMatcher');
 
 // ═══════════════════════════════════════════════════════
 // STATUS TRANSITION RULES
@@ -50,6 +51,23 @@ const createBooking = asyncHandler(async (req, res) => {
         address, notes, estimatedCost,
     } = req.body;
 
+    // ── Attempt auto-assignment ───────────────────────
+    const matchedTech = await findBestMatch({ serviceType });
+
+    const statusHistory = [{ status: 'pending', changedBy: req.user._id }];
+    let initialStatus = 'pending';
+    let technicianId = null;
+
+    if (matchedTech) {
+        technicianId = matchedTech._id;
+        initialStatus = 'assigned';
+        statusHistory.push({
+            status: 'assigned',
+            changedBy: req.user._id,
+            note: 'Auto-assigned by matching engine',
+        });
+    }
+
     const booking = await Booking.create({
         user: req.user._id,
         serviceType,
@@ -60,12 +78,22 @@ const createBooking = asyncHandler(async (req, res) => {
         address,
         notes,
         estimatedCost,
-        statusHistory: [{ status: 'pending', changedBy: req.user._id }],
+        technician: technicianId,
+        status: initialStatus,
+        statusHistory,
     });
+
+    // Populate technician info if assigned
+    if (technicianId) {
+        await booking.populate('technician', 'specializations averageRating');
+    }
 
     res.status(201).json({
         success: true,
-        message: 'Booking created successfully',
+        message: matchedTech
+            ? 'Booking created and technician auto-assigned'
+            : 'Booking created. Awaiting technician assignment.',
+        autoAssigned: !!matchedTech,
         data: { booking },
     });
 });
