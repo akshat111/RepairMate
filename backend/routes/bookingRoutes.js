@@ -3,12 +3,20 @@ const {
     createBooking,
     getMyBookings,
     getBooking,
-    getAllBookings,
-    updateBookingStatus,
-    assignTechnician,
     cancelBooking,
+    getAssignedBookings,
+    startBooking,
+    completeBooking,
+    getAllBookings,
+    assignTechnician,
+    updateBookingStatus,
 } = require('../controllers/bookingController');
 const { protect, authorize } = require('../middleware/auth');
+const {
+    validateBookingCreate,
+    validateStatusUpdate,
+    validateAssignment,
+} = require('../middleware/validateBooking');
 
 const router = express.Router();
 
@@ -16,14 +24,19 @@ const router = express.Router();
 router.use(protect);
 
 // ── User routes ───────────────────────────────────────
-router.post('/', createBooking);
+router.post('/', validateBookingCreate, createBooking);
 router.get('/my', getMyBookings);
 router.get('/:id', getBooking);
 router.patch('/:id/cancel', cancelBooking);
 
+// ── Technician routes ─────────────────────────────────
+router.get('/assigned/me', authorize('technician', 'admin'), getAssignedBookings);
+router.patch('/:id/start', authorize('technician'), startBooking);
+router.patch('/:id/complete', authorize('technician'), completeBooking);
+
 // ── Admin routes ──────────────────────────────────────
 router.get('/', authorize('admin'), getAllBookings);
-router.patch('/:id/status', authorize('admin'), updateBookingStatus);
-router.patch('/:id/assign', authorize('admin'), assignTechnician);
+router.patch('/:id/assign', authorize('admin'), validateAssignment, assignTechnician);
+router.patch('/:id/status', authorize('admin'), validateStatusUpdate, updateBookingStatus);
 
 module.exports = router;

@@ -24,8 +24,8 @@ const userSchema = new mongoose.Schema(
         password: {
             type: String,
             required: [true, 'Password is required'],
-            minlength: [6, 'Password must be at least 6 characters'],
-            select: false, // Never return password in queries by default
+            minlength: [8, 'Password must be at least 8 characters'],
+            select: false,
         },
         phone: {
             type: String,
@@ -45,6 +45,15 @@ const userSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
         },
+
+        // ── Security fields ─────────────────────────────────
+        refreshToken: {
+            type: String,
+            select: false,
+        },
+        passwordChangedAt: {
+            type: Date,
+        },
     },
     {
         timestamps: true,
@@ -53,25 +62,40 @@ const userSchema = new mongoose.Schema(
 
 // ── Hash password before saving ───────────────────────
 userSchema.pre('save', async function (next) {
-    // Only hash if the password field was modified
     if (!this.isModified('password')) return next();
 
     const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);
+
+    // Track when the password was last changed (skip first creation)
+    if (!this.isNew) {
+        this.passwordChangedAt = new Date(Date.now() - 1000); // subtract 1s to ensure token iat < changedAt
+    }
+
     next();
 });
 
-// ── Instance method: compare candidate password ──────
+// ── Instance: compare candidate password ──────────────
 userSchema.methods.comparePassword = async function (candidatePassword) {
     return bcrypt.compare(candidatePassword, this.password);
 };
 
-// ── Strip password from JSON output ───────────────────
+// ── Instance: check if password changed after token issued ──
+userSchema.methods.changedPasswordAfter = function (jwtTimestamp) {
+    if (this.passwordChangedAt) {
+        const changedAt = Math.floor(this.passwordChangedAt.getTime() / 1000);
+        return jwtTimestamp < changedAt;
+    }
+    return false;
+};
+
+// ── Strip sensitive fields from JSON output ───────────
 userSchema.methods.toJSON = function () {
     const obj = this.toObject();
     delete obj.password;
+    delete obj.refreshToken;
+    delete obj.__v;
     return obj;
 };
 
 module.exports = mongoose.model('User', userSchema);
-

@@ -3,15 +3,40 @@ const Technician = require('../models/Technician');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
 
-// ── Valid status transitions ──────────────────────────
-const STATUS_TRANSITIONS = {
-    pending: ['confirmed', 'cancelled'],
-    confirmed: ['assigned', 'cancelled'],
-    assigned: ['in-progress', 'cancelled'],
-    'in-progress': ['completed', 'cancelled'],
-    completed: [],
-    cancelled: [],
+// ═══════════════════════════════════════════════════════
+// STATUS TRANSITION RULES
+// Maps current status → { allowedNextStatuses, allowedRoles }
+// ═══════════════════════════════════════════════════════
+const TRANSITIONS = {
+    pending: {
+        assigned: ['admin'],
+        cancelled: ['user', 'admin'],
+    },
+    assigned: {
+        in_progress: ['technician'],
+        cancelled: ['user', 'admin'],
+    },
+    in_progress: {
+        completed: ['technician', 'admin'],
+        cancelled: ['admin'],
+    },
+    completed: {},
+    cancelled: {},
 };
+
+/**
+ * Validates whether a role can perform a given status transition.
+ * @returns {boolean}
+ */
+const canTransition = (currentStatus, newStatus, role) => {
+    const allowed = TRANSITIONS[currentStatus];
+    if (!allowed || !allowed[newStatus]) return false;
+    return allowed[newStatus].includes(role);
+};
+
+// ═══════════════════════════════════════════════════════
+// USER ENDPOINTS
+// ═══════════════════════════════════════════════════════
 
 /**
  * @desc    Create a new booking
@@ -19,22 +44,23 @@ const STATUS_TRANSITIONS = {
  * @access  Private (user)
  */
 const createBooking = asyncHandler(async (req, res) => {
-    // Attach logged-in user
-    req.body.user = req.user._id;
-
-    // Prevent non-admin from setting status or technician at creation
-    delete req.body.status;
-    delete req.body.technician;
-    delete req.body.statusHistory;
+    const {
+        serviceType, description, deviceInfo,
+        preferredDate, preferredTimeSlot,
+        address, notes, estimatedCost,
+    } = req.body;
 
     const booking = await Booking.create({
-        ...req.body,
-        statusHistory: [
-            {
-                status: 'pending',
-                changedBy: req.user._id,
-            },
-        ],
+        user: req.user._id,
+        serviceType,
+        description,
+        deviceInfo,
+        preferredDate,
+        preferredTimeSlot,
+        address,
+        notes,
+        estimatedCost,
+        statusHistory: [{ status: 'pending', changedBy: req.user._id }],
     });
 
     res.status(201).json({
@@ -79,22 +105,25 @@ const getMyBookings = asyncHandler(async (req, res) => {
 /**
  * @desc    Get a single booking by ID
  * @route   GET /api/v1/bookings/:id
- * @access  Private (owner / admin)
+ * @access  Private (owner / assigned technician / admin)
  */
 const getBooking = asyncHandler(async (req, res) => {
     const booking = await Booking.findById(req.params.id)
         .populate('user', 'name email phone')
-        .populate('technician', 'specializations averageRating');
+        .populate('technician', 'specializations averageRating user');
 
     if (!booking) {
         throw new AppError('Booking not found', 404);
     }
 
-    // Only owner or admin can view
-    if (
-        booking.user._id.toString() !== req.user._id.toString() &&
-        req.user.role !== 'admin'
-    ) {
+    const isOwner = booking.user._id.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+    const isAssignedTechnician =
+        booking.technician &&
+        booking.technician.user &&
+        booking.technician.user.toString() === req.user._id.toString();
+
+    if (!isOwner && !isAdmin && !isAssignedTechnician) {
         throw new AppError('Not authorized to view this booking', 403);
     }
 
@@ -103,6 +132,188 @@ const getBooking = asyncHandler(async (req, res) => {
         data: { booking },
     });
 });
+
+/**
+ * @desc    Cancel own booking (user)
+ * @route   PATCH /api/v1/bookings/:id/cancel
+ * @access  Private (owner)
+ */
+const cancelBooking = asyncHandler(async (req, res) => {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+        throw new AppError('Booking not found', 404);
+    }
+
+    // Ownership check
+    if (booking.user.toString() !== req.user._id.toString()) {
+        throw new AppError('Not authorized to cancel this booking', 403);
+    }
+
+    // Validate the transition for user role
+    if (!canTransition(booking.status, 'cancelled', 'user')) {
+        throw new AppError(
+            `Cannot cancel a booking with status '${booking.status}'`,
+            400
+        );
+    }
+
+    booking.status = 'cancelled';
+    booking.cancelledAt = new Date();
+    booking.cancellationReason = req.body.reason || 'Cancelled by user';
+    booking.statusHistory.push({
+        status: 'cancelled',
+        changedBy: req.user._id,
+        note: booking.cancellationReason,
+    });
+
+    await booking.save();
+
+    res.status(200).json({
+        success: true,
+        message: 'Booking cancelled successfully',
+        data: { booking },
+    });
+});
+
+// ═══════════════════════════════════════════════════════
+// TECHNICIAN ENDPOINTS
+// ═══════════════════════════════════════════════════════
+
+/**
+ * @desc    Get bookings assigned to the logged-in technician
+ * @route   GET /api/v1/bookings/assigned
+ * @access  Private (technician)
+ */
+const getAssignedBookings = asyncHandler(async (req, res) => {
+    const techProfile = await Technician.findOne({ user: req.user._id });
+
+    if (!techProfile) {
+        throw new AppError('No technician profile found for this user', 404);
+    }
+
+    const { status, page = 1, limit = 10 } = req.query;
+
+    const filter = { technician: techProfile._id };
+    if (status) filter.status = status;
+
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+
+    const [bookings, total] = await Promise.all([
+        Booking.find(filter)
+            .populate('user', 'name email phone')
+            .sort({ preferredDate: 1 })
+            .skip(skip)
+            .limit(parseInt(limit, 10)),
+        Booking.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+        success: true,
+        count: bookings.length,
+        total,
+        page: parseInt(page, 10),
+        pages: Math.ceil(total / parseInt(limit, 10)),
+        data: { bookings },
+    });
+});
+
+/**
+ * @desc    Mark booking as in_progress (technician starts work)
+ * @route   PATCH /api/v1/bookings/:id/start
+ * @access  Private (assigned technician)
+ */
+const startBooking = asyncHandler(async (req, res) => {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+        throw new AppError('Booking not found', 404);
+    }
+
+    // Verify caller is the assigned technician
+    const techProfile = await Technician.findOne({ user: req.user._id });
+    if (
+        !techProfile ||
+        !booking.technician ||
+        booking.technician.toString() !== techProfile._id.toString()
+    ) {
+        throw new AppError('You are not assigned to this booking', 403);
+    }
+
+    if (!canTransition(booking.status, 'in_progress', 'technician')) {
+        throw new AppError(
+            `Cannot start a booking with status '${booking.status}'`,
+            400
+        );
+    }
+
+    booking.status = 'in_progress';
+    booking.startedAt = new Date();
+    booking.statusHistory.push({
+        status: 'in_progress',
+        changedBy: req.user._id,
+    });
+
+    await booking.save();
+
+    res.status(200).json({
+        success: true,
+        message: 'Booking marked as in progress',
+        data: { booking },
+    });
+});
+
+/**
+ * @desc    Mark booking as completed (technician finishes work)
+ * @route   PATCH /api/v1/bookings/:id/complete
+ * @access  Private (assigned technician)
+ */
+const completeBooking = asyncHandler(async (req, res) => {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+        throw new AppError('Booking not found', 404);
+    }
+
+    // Verify caller is the assigned technician
+    const techProfile = await Technician.findOne({ user: req.user._id });
+    if (
+        !techProfile ||
+        !booking.technician ||
+        booking.technician.toString() !== techProfile._id.toString()
+    ) {
+        throw new AppError('You are not assigned to this booking', 403);
+    }
+
+    if (!canTransition(booking.status, 'completed', 'technician')) {
+        throw new AppError(
+            `Cannot complete a booking with status '${booking.status}'`,
+            400
+        );
+    }
+
+    booking.status = 'completed';
+    booking.completedAt = new Date();
+    if (req.body.finalCost !== undefined) booking.finalCost = req.body.finalCost;
+    if (req.body.notes) booking.notes = req.body.notes;
+    booking.statusHistory.push({
+        status: 'completed',
+        changedBy: req.user._id,
+        note: req.body.notes,
+    });
+
+    await booking.save();
+
+    res.status(200).json({
+        success: true,
+        message: 'Booking completed',
+        data: { booking },
+    });
+});
+
+// ═══════════════════════════════════════════════════════
+// ADMIN ENDPOINTS
+// ═══════════════════════════════════════════════════════
 
 /**
  * @desc    Get all bookings (with filters & pagination)
@@ -140,69 +351,14 @@ const getAllBookings = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Update booking status
- * @route   PATCH /api/v1/bookings/:id/status
- * @access  Private (admin)
- */
-const updateBookingStatus = asyncHandler(async (req, res) => {
-    const { status, notes } = req.body;
-
-    if (!status) {
-        throw new AppError('Status is required', 400);
-    }
-
-    const booking = await Booking.findById(req.params.id);
-
-    if (!booking) {
-        throw new AppError('Booking not found', 404);
-    }
-
-    // Validate status transition
-    const allowedTransitions = STATUS_TRANSITIONS[booking.status];
-    if (!allowedTransitions || !allowedTransitions.includes(status)) {
-        throw new AppError(
-            `Cannot transition from '${booking.status}' to '${status}'`,
-            400
-        );
-    }
-
-    booking.status = status;
-    booking.statusHistory.push({
-        status,
-        changedBy: req.user._id,
-    });
-
-    if (notes) booking.adminNotes = notes;
-    if (status === 'completed') booking.completedAt = new Date();
-    if (status === 'cancelled') {
-        booking.cancelledAt = new Date();
-        if (req.body.cancellationReason) {
-            booking.cancellationReason = req.body.cancellationReason;
-        }
-    }
-
-    await booking.save();
-
-    res.status(200).json({
-        success: true,
-        message: `Booking status updated to '${status}'`,
-        data: { booking },
-    });
-});
-
-/**
  * @desc    Assign a technician to a booking
  * @route   PATCH /api/v1/bookings/:id/assign
- * @access  Private (admin)
+ * @access  Private (admin only)
  */
 const assignTechnician = asyncHandler(async (req, res) => {
     const { technicianId } = req.body;
 
-    if (!technicianId) {
-        throw new AppError('Technician ID is required', 400);
-    }
-
-    // Verify technician exists and is available
+    // Verify technician exists, is available, and is approved
     const technician = await Technician.findById(technicianId);
     if (!technician) {
         throw new AppError('Technician not found', 404);
@@ -210,8 +366,8 @@ const assignTechnician = asyncHandler(async (req, res) => {
     if (!technician.isAvailable) {
         throw new AppError('Technician is currently unavailable', 400);
     }
-    if (!technician.isVerified) {
-        throw new AppError('Technician is not yet verified', 400);
+    if (technician.verificationStatus !== 'approved') {
+        throw new AppError('Technician is not verified', 400);
     }
 
     const booking = await Booking.findById(req.params.id);
@@ -219,23 +375,19 @@ const assignTechnician = asyncHandler(async (req, res) => {
         throw new AppError('Booking not found', 404);
     }
 
-    if (booking.status === 'completed' || booking.status === 'cancelled') {
+    if (!canTransition(booking.status, 'assigned', 'admin')) {
         throw new AppError(
-            `Cannot assign technician to a ${booking.status} booking`,
+            `Cannot assign technician to a booking with status '${booking.status}'`,
             400
         );
     }
 
     booking.technician = technicianId;
-
-    // Auto-move to 'assigned' if currently pending or confirmed
-    if (booking.status === 'pending' || booking.status === 'confirmed') {
-        booking.status = 'assigned';
-        booking.statusHistory.push({
-            status: 'assigned',
-            changedBy: req.user._id,
-        });
-    }
+    booking.status = 'assigned';
+    booking.statusHistory.push({
+        status: 'assigned',
+        changedBy: req.user._id,
+    });
 
     await booking.save();
 
@@ -252,39 +404,45 @@ const assignTechnician = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Cancel a booking (by the owner)
- * @route   PATCH /api/v1/bookings/:id/cancel
- * @access  Private (owner)
+ * @desc    Admin force-update booking status
+ * @route   PATCH /api/v1/bookings/:id/status
+ * @access  Private (admin)
  */
-const cancelBooking = asyncHandler(async (req, res) => {
+const updateBookingStatus = asyncHandler(async (req, res) => {
+    const { status, notes, cancellationReason } = req.body;
+
     const booking = await Booking.findById(req.params.id);
 
     if (!booking) {
         throw new AppError('Booking not found', 404);
     }
 
-    // Only owner can cancel through this route
-    if (booking.user.toString() !== req.user._id.toString()) {
-        throw new AppError('Not authorized to cancel this booking', 403);
+    if (!canTransition(booking.status, status, 'admin')) {
+        throw new AppError(
+            `Admin cannot transition from '${booking.status}' to '${status}'`,
+            400
+        );
     }
 
-    if (booking.status === 'completed' || booking.status === 'cancelled') {
-        throw new AppError(`Cannot cancel a ${booking.status} booking`, 400);
-    }
-
-    booking.status = 'cancelled';
-    booking.cancelledAt = new Date();
-    booking.cancellationReason = req.body.reason || 'Cancelled by user';
+    booking.status = status;
     booking.statusHistory.push({
-        status: 'cancelled',
+        status,
         changedBy: req.user._id,
+        note: notes,
     });
+
+    if (notes) booking.adminNotes = notes;
+    if (status === 'completed') booking.completedAt = new Date();
+    if (status === 'cancelled') {
+        booking.cancelledAt = new Date();
+        booking.cancellationReason = cancellationReason || 'Cancelled by admin';
+    }
 
     await booking.save();
 
     res.status(200).json({
         success: true,
-        message: 'Booking cancelled successfully',
+        message: `Booking status updated to '${status}'`,
         data: { booking },
     });
 });
@@ -293,8 +451,11 @@ module.exports = {
     createBooking,
     getMyBookings,
     getBooking,
-    getAllBookings,
-    updateBookingStatus,
-    assignTechnician,
     cancelBooking,
+    getAssignedBookings,
+    startBooking,
+    completeBooking,
+    getAllBookings,
+    assignTechnician,
+    updateBookingStatus,
 };

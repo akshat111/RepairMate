@@ -76,12 +76,18 @@ const technicianSchema = new mongoose.Schema(
         },
 
         // ── Verification status ───────────────────────────
-        isVerified: {
-            type: Boolean,
-            default: false,
+        verificationStatus: {
+            type: String,
+            enum: ['pending', 'approved', 'rejected'],
+            default: 'pending',
         },
         verifiedAt: {
             type: Date,
+        },
+        rejectionReason: {
+            type: String,
+            trim: true,
+            maxlength: [500, 'Rejection reason cannot exceed 500 characters'],
         },
     },
     {
@@ -91,7 +97,7 @@ const technicianSchema = new mongoose.Schema(
 
 // ── Indexes ───────────────────────────────────────────
 technicianSchema.index({ specializations: 1 });
-technicianSchema.index({ isAvailable: 1, isVerified: 1 });
+technicianSchema.index({ isAvailable: 1, verificationStatus: 1 });
 technicianSchema.index({ location: '2dsphere' }); // Geo queries (nearby technicians)
 
 // ── Virtual: populate user details ────────────────────

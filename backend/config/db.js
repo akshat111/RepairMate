@@ -1,8 +1,12 @@
 const mongoose = require('mongoose');
+const dns = require('dns');
+
+// Use Google DNS to avoid Windows SRV resolution issues
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 /**
  * Connect to MongoDB using the URI from environment variables.
- * Waits for a successful connection before the server starts listening.
+ * Includes a fallback for Windows systems where SRV lookups fail.
  */
 const connectDB = async () => {
   try {

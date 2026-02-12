@@ -1,6 +1,18 @@
 const mongoose = require('mongoose');
 
-// ── Booking Schema ────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// BOOKING STATUS LIFECYCLE
+// ═══════════════════════════════════════════════════════
+//
+//  pending ──→ assigned ──→ in_progress ──→ completed
+//     │            │             │
+//     └────────────┴─────────────┘
+//               cancelled
+//
+// ═══════════════════════════════════════════════════════
+
+const VALID_STATUSES = ['pending', 'assigned', 'in_progress', 'completed', 'cancelled'];
+
 const bookingSchema = new mongoose.Schema(
     {
         // ── Parties ───────────────────────────────────────
@@ -53,17 +65,10 @@ const bookingSchema = new mongoose.Schema(
             zipCode: { type: String, trim: true },
         },
 
-        // ── Status tracking ───────────────────────────────
+        // ── Status ────────────────────────────────────────
         status: {
             type: String,
-            enum: [
-                'pending',
-                'confirmed',
-                'assigned',
-                'in-progress',
-                'completed',
-                'cancelled',
-            ],
+            enum: VALID_STATUSES,
             default: 'pending',
         },
 
@@ -92,22 +97,17 @@ const bookingSchema = new mongoose.Schema(
         },
         statusHistory: [
             {
-                status: String,
+                status: { type: String, enum: VALID_STATUSES },
                 changedAt: { type: Date, default: Date.now },
                 changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+                note: { type: String },
             },
         ],
 
-        completedAt: {
-            type: Date,
-        },
-        cancelledAt: {
-            type: Date,
-        },
-        cancellationReason: {
-            type: String,
-            trim: true,
-        },
+        completedAt: { type: Date },
+        cancelledAt: { type: Date },
+        cancellationReason: { type: String, trim: true },
+        startedAt: { type: Date }, // When technician marks in_progress
     },
     {
         timestamps: true,
