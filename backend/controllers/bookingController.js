@@ -3,6 +3,7 @@ const Technician = require('../models/Technician');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
 const { findBestMatch } = require('../services/technicianMatcher');
+const { bookingBus, BOOKING_EVENTS } = require('../services/bookingEvents');
 
 // ═══════════════════════════════════════════════════════
 // STATUS TRANSITION RULES
@@ -87,6 +88,16 @@ const createBooking = asyncHandler(async (req, res) => {
     if (technicianId) {
         await booking.populate('technician', 'specializations averageRating');
     }
+
+    // Emit real-time event
+    bookingBus.emit(BOOKING_EVENTS.CREATED, {
+        booking,
+        userId: req.user._id.toString(),
+        technicianId: matchedTech ? matchedTech.user?.toString() : null,
+        changedBy: req.user._id.toString(),
+        previousStatus: null,
+        newStatus: initialStatus,
+    });
 
     res.status(201).json({
         success: true,
@@ -197,6 +208,19 @@ const cancelBooking = asyncHandler(async (req, res) => {
 
     await booking.save();
 
+    // Emit real-time event
+    const techProfile = booking.technician
+        ? await Technician.findById(booking.technician)
+        : null;
+    bookingBus.emit(BOOKING_EVENTS.CANCELLED, {
+        booking,
+        userId: booking.user.toString(),
+        technicianId: techProfile?.user?.toString() || null,
+        changedBy: req.user._id.toString(),
+        previousStatus: 'pending',
+        newStatus: 'cancelled',
+    });
+
     res.status(200).json({
         success: true,
         message: 'Booking cancelled successfully',
@@ -284,6 +308,16 @@ const startBooking = asyncHandler(async (req, res) => {
 
     await booking.save();
 
+    // Emit real-time event
+    bookingBus.emit(BOOKING_EVENTS.STARTED, {
+        booking,
+        userId: booking.user.toString(),
+        technicianId: req.user._id.toString(),
+        changedBy: req.user._id.toString(),
+        previousStatus: 'assigned',
+        newStatus: 'in_progress',
+    });
+
     res.status(200).json({
         success: true,
         message: 'Booking marked as in progress',
@@ -331,6 +365,16 @@ const completeBooking = asyncHandler(async (req, res) => {
     });
 
     await booking.save();
+
+    // Emit real-time event
+    bookingBus.emit(BOOKING_EVENTS.COMPLETED, {
+        booking,
+        userId: booking.user.toString(),
+        technicianId: req.user._id.toString(),
+        changedBy: req.user._id.toString(),
+        previousStatus: 'in_progress',
+        newStatus: 'completed',
+    });
 
     res.status(200).json({
         success: true,
@@ -419,6 +463,16 @@ const assignTechnician = asyncHandler(async (req, res) => {
 
     await booking.save();
 
+    // Emit real-time event
+    bookingBus.emit(BOOKING_EVENTS.ASSIGNED, {
+        booking,
+        userId: booking.user.toString(),
+        technicianId: technician.user.toString(),
+        changedBy: req.user._id.toString(),
+        previousStatus: 'pending',
+        newStatus: 'assigned',
+    });
+
     const populated = await booking.populate(
         'technician',
         'specializations averageRating'
@@ -467,6 +521,19 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
     }
 
     await booking.save();
+
+    // Emit real-time event
+    const techDoc = booking.technician
+        ? await Technician.findById(booking.technician)
+        : null;
+    bookingBus.emit(BOOKING_EVENTS.STATUS_CHANGED, {
+        booking,
+        userId: booking.user.toString(),
+        technicianId: techDoc?.user?.toString() || null,
+        changedBy: req.user._id.toString(),
+        previousStatus: booking.statusHistory[booking.statusHistory.length - 2]?.status || null,
+        newStatus: status,
+    });
 
     res.status(200).json({
         success: true,
