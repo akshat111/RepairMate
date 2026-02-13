@@ -3,7 +3,12 @@ const Technician = require('../models/Technician');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
 const { findBestMatch } = require('../services/technicianMatcher');
+const { calculatePrice } = require('../services/pricingService');
+const { generateEarning } = require('../services/earningsService');
 const { bookingBus, BOOKING_EVENTS } = require('../services/bookingEvents');
+const { cancelBooking: cancelBookingSvc } = require('../services/cancellationService');
+const { rescheduleBooking: rescheduleBookingSvc } = require('../services/rescheduleService');
+const logger = require('../utils/logger');
 
 // ═══════════════════════════════════════════════════════
 // STATUS TRANSITION RULES
@@ -47,10 +52,13 @@ const canTransition = (currentStatus, newStatus, role) => {
  */
 const createBooking = asyncHandler(async (req, res) => {
     const {
-        serviceType, description, deviceInfo,
+        serviceType, issueType, urgency, description, deviceInfo,
         preferredDate, preferredTimeSlot,
-        address, notes, estimatedCost,
+        address, notes,
     } = req.body;
+
+    // ── Calculate price from pricing rules ───────────────
+    const pricing = await calculatePrice({ serviceType, issueType, urgency });
 
     // ── Attempt auto-assignment ───────────────────────
     const matchedTech = await findBestMatch({ serviceType });
@@ -72,13 +80,19 @@ const createBooking = asyncHandler(async (req, res) => {
     const booking = await Booking.create({
         user: req.user._id,
         serviceType,
+        issueType,
+        urgency,
         description,
         deviceInfo,
         preferredDate,
         preferredTimeSlot,
         address,
         notes,
-        estimatedCost,
+        estimatedCost: pricing.estimatedCost,
+        pricingBreakdown: {
+            ...pricing.breakdown,
+            ruleId: pricing.ruleId,
+        },
         technician: technicianId,
         status: initialStatus,
         statusHistory,
@@ -173,58 +187,52 @@ const getBooking = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Cancel own booking (user)
+ * @desc    Cancel own booking (user) — with full financial cleanup
  * @route   PATCH /api/v1/bookings/:id/cancel
  * @access  Private (owner)
  */
 const cancelBooking = asyncHandler(async (req, res) => {
-    const booking = await Booking.findById(req.params.id);
-
-    if (!booking) {
-        throw new AppError('Booking not found', 404);
-    }
-
-    // Ownership check
-    if (booking.user.toString() !== req.user._id.toString()) {
-        throw new AppError('Not authorized to cancel this booking', 403);
-    }
-
-    // Validate the transition for user role
-    if (!canTransition(booking.status, 'cancelled', 'user')) {
-        throw new AppError(
-            `Cannot cancel a booking with status '${booking.status}'`,
-            400
-        );
-    }
-
-    booking.status = 'cancelled';
-    booking.cancelledAt = new Date();
-    booking.cancellationReason = req.body.reason || 'Cancelled by user';
-    booking.statusHistory.push({
-        status: 'cancelled',
-        changedBy: req.user._id,
-        note: booking.cancellationReason,
-    });
-
-    await booking.save();
-
-    // Emit real-time event
-    const techProfile = booking.technician
-        ? await Technician.findById(booking.technician)
-        : null;
-    bookingBus.emit(BOOKING_EVENTS.CANCELLED, {
-        booking,
-        userId: booking.user.toString(),
-        technicianId: techProfile?.user?.toString() || null,
-        changedBy: req.user._id.toString(),
-        previousStatus: 'pending',
-        newStatus: 'cancelled',
+    const result = await cancelBookingSvc(req.params.id, {
+        cancelledBy: req.user._id,
+        role: 'user',
+        reason: req.body.reason,
     });
 
     res.status(200).json({
         success: true,
         message: 'Booking cancelled successfully',
-        data: { booking },
+        data: {
+            booking: result.booking,
+            refund: result.refund,
+            earningReversed: result.earningReversed,
+        },
+    });
+});
+
+/**
+ * @desc    Reschedule own booking
+ * @route   PATCH /api/v1/bookings/:id/reschedule
+ * @access  Private (owner)
+ */
+const rescheduleBooking = asyncHandler(async (req, res) => {
+    const { preferredDate, preferredTimeSlot, reason } = req.body;
+
+    const result = await rescheduleBookingSvc(req.params.id, {
+        rescheduledBy: req.user._id,
+        role: 'user',
+        newDate: preferredDate,
+        newTimeSlot: preferredTimeSlot,
+        reason,
+    });
+
+    res.status(200).json({
+        success: true,
+        message: 'Booking rescheduled successfully',
+        data: {
+            booking: result.booking,
+            priceChanged: result.priceChanged,
+            technicianReassigned: result.technicianReassigned,
+        },
     });
 });
 
@@ -276,37 +284,53 @@ const getAssignedBookings = asyncHandler(async (req, res) => {
  * @access  Private (assigned technician)
  */
 const startBooking = asyncHandler(async (req, res) => {
-    const booking = await Booking.findById(req.params.id);
+    // Verify caller is a technician
+    const techProfile = await Technician.findOne({ user: req.user._id });
+    if (!techProfile) {
+        throw new AppError('Technician profile not found', 403);
+    }
+
+    // ── Atomic start: status must be 'assigned', tech must match, must be paid ──
+    const booking = await Booking.findOneAndUpdate(
+        {
+            _id: req.params.id,
+            status: 'assigned',
+            technician: techProfile._id,
+            paymentStatus: 'paid',
+        },
+        {
+            $set: {
+                status: 'in_progress',
+                startedAt: new Date(),
+            },
+            $push: {
+                statusHistory: {
+                    status: 'in_progress',
+                    changedBy: req.user._id,
+                    changedAt: new Date(),
+                },
+            },
+        },
+        { new: true }
+    );
 
     if (!booking) {
-        throw new AppError('Booking not found', 404);
-    }
-
-    // Verify caller is the assigned technician
-    const techProfile = await Technician.findOne({ user: req.user._id });
-    if (
-        !techProfile ||
-        !booking.technician ||
-        booking.technician.toString() !== techProfile._id.toString()
-    ) {
-        throw new AppError('You are not assigned to this booking', 403);
-    }
-
-    if (!canTransition(booking.status, 'in_progress', 'technician')) {
+        const exists = await Booking.findById(req.params.id);
+        if (!exists) throw new AppError('Booking not found', 404);
+        if (!exists.technician || exists.technician.toString() !== techProfile._id.toString()) {
+            throw new AppError('You are not assigned to this booking', 403);
+        }
+        if (exists.paymentStatus !== 'paid') {
+            throw new AppError(
+                'Cannot start work on an unpaid booking. Payment must be completed first.',
+                402
+            );
+        }
         throw new AppError(
-            `Cannot start a booking with status '${booking.status}'`,
-            400
+            `Cannot start a booking with status '${exists.status}'`,
+            409
         );
     }
-
-    booking.status = 'in_progress';
-    booking.startedAt = new Date();
-    booking.statusHistory.push({
-        status: 'in_progress',
-        changedBy: req.user._id,
-    });
-
-    await booking.save();
 
     // Emit real-time event
     bookingBus.emit(BOOKING_EVENTS.STARTED, {
@@ -331,40 +355,52 @@ const startBooking = asyncHandler(async (req, res) => {
  * @access  Private (assigned technician)
  */
 const completeBooking = asyncHandler(async (req, res) => {
-    const booking = await Booking.findById(req.params.id);
+    // Verify caller is a technician
+    const techProfile = await Technician.findOne({ user: req.user._id });
+    if (!techProfile) {
+        throw new AppError('Technician profile not found', 403);
+    }
+
+    // Build update payload
+    const updateFields = {
+        status: 'completed',
+        completedAt: new Date(),
+    };
+    if (req.body.finalCost !== undefined) updateFields.finalCost = req.body.finalCost;
+    if (req.body.notes) updateFields.notes = req.body.notes;
+
+    // ── Atomic complete: status must be 'in_progress' + tech must match ──
+    const booking = await Booking.findOneAndUpdate(
+        {
+            _id: req.params.id,
+            status: 'in_progress',
+            technician: techProfile._id,
+        },
+        {
+            $set: updateFields,
+            $push: {
+                statusHistory: {
+                    status: 'completed',
+                    changedBy: req.user._id,
+                    changedAt: new Date(),
+                    note: req.body.notes,
+                },
+            },
+        },
+        { new: true }
+    );
 
     if (!booking) {
-        throw new AppError('Booking not found', 404);
-    }
-
-    // Verify caller is the assigned technician
-    const techProfile = await Technician.findOne({ user: req.user._id });
-    if (
-        !techProfile ||
-        !booking.technician ||
-        booking.technician.toString() !== techProfile._id.toString()
-    ) {
-        throw new AppError('You are not assigned to this booking', 403);
-    }
-
-    if (!canTransition(booking.status, 'completed', 'technician')) {
+        const exists = await Booking.findById(req.params.id);
+        if (!exists) throw new AppError('Booking not found', 404);
+        if (!exists.technician || exists.technician.toString() !== techProfile._id.toString()) {
+            throw new AppError('You are not assigned to this booking', 403);
+        }
         throw new AppError(
-            `Cannot complete a booking with status '${booking.status}'`,
-            400
+            `Cannot complete a booking with status '${exists.status}'`,
+            409
         );
     }
-
-    booking.status = 'completed';
-    booking.completedAt = new Date();
-    if (req.body.finalCost !== undefined) booking.finalCost = req.body.finalCost;
-    if (req.body.notes) booking.notes = req.body.notes;
-    booking.statusHistory.push({
-        status: 'completed',
-        changedBy: req.user._id,
-        note: req.body.notes,
-    });
-
-    await booking.save();
 
     // Emit real-time event
     bookingBus.emit(BOOKING_EVENTS.COMPLETED, {
@@ -376,10 +412,22 @@ const completeBooking = asyncHandler(async (req, res) => {
         newStatus: 'completed',
     });
 
+    // ── Generate technician earnings (idempotent) ────
+    let earning = null;
+    try {
+        earning = await generateEarning({
+            booking,
+            technician: techProfile,
+            techUserId: req.user._id,
+        });
+    } catch (err) {
+        logger.warn('Earnings generation failed', { error: err.message, bookingId: req.params.id });
+    }
+
     res.status(200).json({
         success: true,
         message: 'Booking completed',
-        data: { booking },
+        data: { booking, earning },
     });
 });
 
@@ -442,26 +490,43 @@ const assignTechnician = asyncHandler(async (req, res) => {
         throw new AppError('Technician is not verified', 400);
     }
 
-    const booking = await Booking.findById(req.params.id);
-    if (!booking) {
-        throw new AppError('Booking not found', 404);
-    }
+    // ── Atomic assign: only if status is 'pending' AND no technician yet ──
+    const booking = await Booking.findOneAndUpdate(
+        {
+            _id: req.params.id,
+            status: 'pending',
+            technician: null,
+        },
+        {
+            $set: {
+                technician: technicianId,
+                status: 'assigned',
+            },
+            $push: {
+                statusHistory: {
+                    status: 'assigned',
+                    changedBy: req.user._id,
+                    changedAt: new Date(),
+                },
+            },
+        },
+        { new: true }
+    );
 
-    if (!canTransition(booking.status, 'assigned', 'admin')) {
+    if (!booking) {
+        const exists = await Booking.findById(req.params.id);
+        if (!exists) throw new AppError('Booking not found', 404);
+        if (exists.technician) {
+            throw new AppError(
+                'Booking already has a technician assigned. Cannot double-assign.',
+                409
+            );
+        }
         throw new AppError(
-            `Cannot assign technician to a booking with status '${booking.status}'`,
-            400
+            `Cannot assign technician to a booking with status '${exists.status}'`,
+            409
         );
     }
-
-    booking.technician = technicianId;
-    booking.status = 'assigned';
-    booking.statusHistory.push({
-        status: 'assigned',
-        changedBy: req.user._id,
-    });
-
-    await booking.save();
 
     // Emit real-time event
     bookingBus.emit(BOOKING_EVENTS.ASSIGNED, {
@@ -493,34 +558,54 @@ const assignTechnician = asyncHandler(async (req, res) => {
 const updateBookingStatus = asyncHandler(async (req, res) => {
     const { status, notes, cancellationReason } = req.body;
 
-    const booking = await Booking.findById(req.params.id);
+    // Validate the target status is a known status
+    if (!TRANSITIONS[status] && !Object.values(TRANSITIONS).some(t => t[status])) {
+        throw new AppError(`'${status}' is not a valid booking status`, 400);
+    }
+
+    // Build dynamic update — only set fields relevant to the target status
+    const updateFields = { status };
+    const historyEntry = { status, changedBy: req.user._id, changedAt: new Date() };
+    if (notes) {
+        updateFields.adminNotes = notes;
+        historyEntry.note = notes;
+    }
+    if (status === 'completed') updateFields.completedAt = new Date();
+    if (status === 'cancelled') {
+        updateFields.cancelledAt = new Date();
+        updateFields.cancellationReason = cancellationReason || 'Cancelled by admin';
+    }
+
+    // Determine which current statuses can transition to the target
+    const validFromStatuses = Object.entries(TRANSITIONS)
+        .filter(([, targets]) => targets[status] && targets[status].includes('admin'))
+        .map(([from]) => from);
+
+    if (validFromStatuses.length === 0) {
+        throw new AppError(`Admin cannot transition any booking to status '${status}'`, 400);
+    }
+
+    // ── Atomic status update with transition guard ──
+    const booking = await Booking.findOneAndUpdate(
+        {
+            _id: req.params.id,
+            status: { $in: validFromStatuses },
+        },
+        {
+            $set: updateFields,
+            $push: { statusHistory: historyEntry },
+        },
+        { new: true }
+    );
 
     if (!booking) {
-        throw new AppError('Booking not found', 404);
-    }
-
-    if (!canTransition(booking.status, status, 'admin')) {
+        const exists = await Booking.findById(req.params.id);
+        if (!exists) throw new AppError('Booking not found', 404);
         throw new AppError(
-            `Admin cannot transition from '${booking.status}' to '${status}'`,
-            400
+            `Admin cannot transition from '${exists.status}' to '${status}'`,
+            409
         );
     }
-
-    booking.status = status;
-    booking.statusHistory.push({
-        status,
-        changedBy: req.user._id,
-        note: notes,
-    });
-
-    if (notes) booking.adminNotes = notes;
-    if (status === 'completed') booking.completedAt = new Date();
-    if (status === 'cancelled') {
-        booking.cancelledAt = new Date();
-        booking.cancellationReason = cancellationReason || 'Cancelled by admin';
-    }
-
-    await booking.save();
 
     // Emit real-time event
     const techDoc = booking.technician
@@ -541,16 +626,68 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
         data: { booking },
     });
 });
+/**
+ * @desc    Admin cancel booking with full financial cleanup
+ * @route   PATCH /api/v1/bookings/:id/admin-cancel
+ * @access  Private (admin)
+ */
+const adminCancelBooking = asyncHandler(async (req, res) => {
+    const result = await cancelBookingSvc(req.params.id, {
+        cancelledBy: req.user._id,
+        role: 'admin',
+        reason: req.body.reason || 'Cancelled by admin',
+    });
+
+    res.status(200).json({
+        success: true,
+        message: 'Booking cancelled by admin',
+        data: {
+            booking: result.booking,
+            refund: result.refund,
+            earningReversed: result.earningReversed,
+        },
+    });
+});
+
+/**
+ * @desc    Admin reschedule booking
+ * @route   PATCH /api/v1/bookings/:id/admin-reschedule
+ * @access  Private (admin)
+ */
+const adminRescheduleBooking = asyncHandler(async (req, res) => {
+    const { preferredDate, preferredTimeSlot, reason } = req.body;
+
+    const result = await rescheduleBookingSvc(req.params.id, {
+        rescheduledBy: req.user._id,
+        role: 'admin',
+        newDate: preferredDate,
+        newTimeSlot: preferredTimeSlot,
+        reason,
+    });
+
+    res.status(200).json({
+        success: true,
+        message: 'Booking rescheduled by admin',
+        data: {
+            booking: result.booking,
+            priceChanged: result.priceChanged,
+            technicianReassigned: result.technicianReassigned,
+        },
+    });
+});
 
 module.exports = {
     createBooking,
     getMyBookings,
     getBooking,
     cancelBooking,
+    rescheduleBooking,
     getAssignedBookings,
     startBooking,
     completeBooking,
     getAllBookings,
     assignTechnician,
     updateBookingStatus,
+    adminCancelBooking,
+    adminRescheduleBooking,
 };

@@ -1,6 +1,7 @@
 const channels = require('./channels');
 const templates = require('./templates');
 const { bookingBus, BOOKING_EVENTS } = require('../services/bookingEvents');
+const logger = require('../utils/logger');
 
 // ═══════════════════════════════════════════════════════
 // NOTIFICATION SERVICE
@@ -35,10 +36,10 @@ const dispatch = async (notification) => {
     // Log any channel failures (don't throw — notifications are non-blocking)
     results.forEach((result, idx) => {
         if (result.status === 'rejected') {
-            console.error(
-                `⚠️  Notification channel "${enabledChannels[idx].name}" failed:`,
-                result.reason?.message || result.reason
-            );
+            logger.warn('Notification channel failed', {
+                channel: enabledChannels[idx].name,
+                error: result.reason?.message || result.reason,
+            });
         }
     });
 };
@@ -179,7 +180,7 @@ const registerListeners = () => {
         );
     });
 
-    console.log('🔔 Notification service initialized');
+    logger.info('Notification service initialized');
 };
 
 module.exports = { dispatch, notifyUser, registerListeners };

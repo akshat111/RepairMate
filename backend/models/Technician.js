@@ -78,6 +78,11 @@ const technicianSchema = new mongoose.Schema(
             type: Number,
             min: [0, 'Hourly rate cannot be negative'],
         },
+        commissionRate: {
+            type: Number,
+            min: [0, 'Commission rate cannot be negative'],
+            max: [1, 'Commission rate cannot exceed 1 (100%)'],
+        },
 
         // ── Verification status ───────────────────────────
         verificationStatus: {

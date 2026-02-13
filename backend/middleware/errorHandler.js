@@ -1,16 +1,23 @@
 const AppError = require('../utils/AppError');
+const { markIdempotencyError } = require('./idempotent');
+const logger = require('../utils/logger');
 
 /**
  * Centralized error-handling middleware
  * Must have 4 parameters so Express recognizes it as an error handler.
  */
 // eslint-disable-next-line no-unused-vars
-const errorHandler = (err, req, res, next) => {
+const errorHandler = async (err, req, res, next) => {
     let error = { ...err, message: err.message };
+
+    // ── Mark idempotency key as errored (allows retry) ──
+    if (req._idempotencyKey) {
+        await markIdempotencyError(req, err.message);
+    }
 
     // Log the full error in development
     if (process.env.NODE_ENV === 'development') {
-        console.error('❌ Error:', err);
+        logger.error('Request error', { message: err.message, stack: err.stack, statusCode: err.statusCode });
     }
 
     // ── Mongoose: Bad ObjectId ──────────────────────────
@@ -49,3 +56,4 @@ const errorHandler = (err, req, res, next) => {
 };
 
 module.exports = errorHandler;
+

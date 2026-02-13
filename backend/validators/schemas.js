@@ -17,6 +17,12 @@ const createBooking = Joi.object({
     serviceType: Joi.string().trim().max(100).required()
         .label('Service type'),
 
+    issueType: Joi.string().trim().max(50)
+        .label('Issue type'),
+
+    urgency: Joi.string().valid('normal', 'urgent', 'emergency').default('normal')
+        .label('Urgency'),
+
     description: Joi.string().trim().max(1000).required()
         .label('Description'),
 
@@ -52,6 +58,17 @@ const createBooking = Joi.object({
 const cancelBooking = Joi.object({
     reason: Joi.string().trim().max(500).optional()
         .label('Cancellation reason'),
+});
+
+const rescheduleBooking = Joi.object({
+    preferredDate: Joi.date().iso().greater('now').required()
+        .label('Preferred date'),
+    preferredTimeSlot: Joi.string()
+        .valid('morning', 'afternoon', 'evening')
+        .optional()
+        .label('Preferred time slot'),
+    reason: Joi.string().trim().max(500).optional()
+        .label('Reschedule reason'),
 });
 
 const completeBooking = Joi.object({
@@ -197,6 +214,7 @@ module.exports = {
     booking: {
         create: createBooking,
         cancel: cancelBooking,
+        reschedule: rescheduleBooking,
         complete: completeBooking,
         assign: assignTechnician,
         updateStatus,
@@ -212,5 +230,83 @@ module.exports = {
         register: authRegister,
         login: authLogin,
         changePassword,
+    },
+    pricing: {
+        create: Joi.object({
+            serviceType: Joi.string().trim().max(50).required().label('Service type'),
+            issueType: Joi.string().trim().max(50).required().label('Issue type'),
+            basePrice: Joi.number().min(0).required().label('Base price'),
+            currency: Joi.string().trim().uppercase().max(3).label('Currency'),
+            urgencyMultipliers: Joi.object({
+                normal: Joi.number().min(0).label('Normal multiplier'),
+                urgent: Joi.number().min(0).label('Urgent multiplier'),
+                emergency: Joi.number().min(0).label('Emergency multiplier'),
+            }).label('Urgency multipliers'),
+            minPrice: Joi.number().min(0).label('Min price'),
+            maxPrice: Joi.number().min(0).label('Max price'),
+            description: Joi.string().trim().max(500).label('Description'),
+            isActive: Joi.boolean().label('Active'),
+        }),
+        update: Joi.object({
+            serviceType: Joi.string().trim().max(50).label('Service type'),
+            issueType: Joi.string().trim().max(50).label('Issue type'),
+            basePrice: Joi.number().min(0).label('Base price'),
+            currency: Joi.string().trim().uppercase().max(3).label('Currency'),
+            urgencyMultipliers: Joi.object({
+                normal: Joi.number().min(0).label('Normal multiplier'),
+                urgent: Joi.number().min(0).label('Urgent multiplier'),
+                emergency: Joi.number().min(0).label('Emergency multiplier'),
+            }).label('Urgency multipliers'),
+            minPrice: Joi.number().min(0).label('Min price'),
+            maxPrice: Joi.number().min(0).label('Max price'),
+            description: Joi.string().trim().max(500).label('Description'),
+            isActive: Joi.boolean().label('Active'),
+        }).min(1),
+    },
+    payment: {
+        initiate: Joi.object({
+            bookingId: objectId.required().label('Booking ID'),
+            amount: Joi.number().positive().required().label('Amount'),
+            currency: Joi.string().trim().uppercase().max(3).label('Currency'),
+            method: Joi.string().valid('card', 'upi', 'net_banking', 'wallet', 'cash', 'other').label('Method'),
+            gateway: Joi.string().trim().label('Gateway'),
+            description: Joi.string().trim().max(500).label('Description'),
+        }),
+        confirm: Joi.object({
+            paymentId: objectId.required().label('Payment ID'),
+            gatewayPaymentId: Joi.string().trim().label('Gateway Payment ID'),
+            signature: Joi.string().trim().label('Signature'),
+            method: Joi.string().valid('card', 'upi', 'net_banking', 'wallet', 'cash', 'other').label('Method'),
+        }),
+        fail: Joi.object({
+            paymentId: objectId.required().label('Payment ID'),
+            reason: Joi.string().trim().max(500).label('Reason'),
+        }),
+        refund: Joi.object({
+            amount: Joi.number().positive().required().label('Refund amount'),
+            reason: Joi.string().trim().max(500).label('Reason'),
+        }),
+        bookingIdParam: Joi.object({
+            bookingId: objectId.required().label('Booking ID'),
+        }),
+    },
+    earnings: {
+        approve: Joi.object({
+            bonus: Joi.number().min(0).label('Bonus'),
+            bonusReason: Joi.string().trim().max(300).label('Bonus reason'),
+            deductions: Joi.number().min(0).label('Deductions'),
+            notes: Joi.string().trim().max(500).label('Notes'),
+        }),
+        pay: Joi.object({
+            paidVia: Joi.string().trim().max(50).label('Paid via'),
+            notes: Joi.string().trim().max(500).label('Notes'),
+        }),
+        bulkApprove: Joi.object({
+            earningIds: Joi.array()
+                .items(objectId.required())
+                .min(1)
+                .required()
+                .label('Earning IDs'),
+        }),
     },
 };

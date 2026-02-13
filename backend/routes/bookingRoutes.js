@@ -4,16 +4,20 @@ const {
     getMyBookings,
     getBooking,
     cancelBooking,
+    rescheduleBooking,
     getAssignedBookings,
     startBooking,
     completeBooking,
     getAllBookings,
     assignTechnician,
     updateBookingStatus,
+    adminCancelBooking,
+    adminRescheduleBooking,
 } = require('../controllers/bookingController');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize, adminOnly } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const schemas = require('../validators/schemas');
+const { idempotent } = require('../middleware/idempotent');
 
 const router = express.Router();
 
@@ -21,14 +25,21 @@ const router = express.Router();
 router.use(protect);
 
 // ── User routes ───────────────────────────────────────
-router.post('/', validate(schemas.booking.create), createBooking);
+router.post('/', authorize('user'), validate(schemas.booking.create), idempotent(), createBooking);
 router.get('/my', validate(schemas.booking.query, 'query'), getMyBookings);
 router.get('/:id', validate(schemas.mongoIdParam, 'params'), getBooking);
 router.patch(
     '/:id/cancel',
     validate(schemas.mongoIdParam, 'params'),
     validate(schemas.booking.cancel),
+    idempotent(),
     cancelBooking
+);
+router.patch(
+    '/:id/reschedule',
+    validate(schemas.mongoIdParam, 'params'),
+    validate(schemas.booking.reschedule),
+    rescheduleBooking
 );
 
 // ── Technician routes ─────────────────────────────────
@@ -58,5 +69,21 @@ router.patch(
     authorize('admin'),
     updateBookingStatus
 );
+router.patch(
+    '/:id/admin-cancel',
+    validate(schemas.mongoIdParam, 'params'),
+    validate(schemas.booking.cancel),
+    adminOnly,
+    idempotent(),
+    adminCancelBooking
+);
+router.patch(
+    '/:id/admin-reschedule',
+    validate(schemas.mongoIdParam, 'params'),
+    validate(schemas.booking.reschedule),
+    adminOnly,
+    adminRescheduleBooking
+);
 
 module.exports = router;
+

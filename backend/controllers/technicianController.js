@@ -156,20 +156,27 @@ const getTechnician = asyncHandler(async (req, res) => {
  * @access  Private (admin)
  */
 const approveTechnician = asyncHandler(async (req, res) => {
-    const technician = await Technician.findById(req.params.id);
+    // ── Atomic approve: only if not already approved ──
+    const technician = await Technician.findOneAndUpdate(
+        {
+            _id: req.params.id,
+            verificationStatus: { $ne: 'approved' },
+        },
+        {
+            $set: {
+                verificationStatus: 'approved',
+                verifiedAt: new Date(),
+            },
+            $unset: { rejectionReason: 1 },
+        },
+        { new: true }
+    );
 
     if (!technician) {
-        throw new AppError('Technician not found', 404);
+        const exists = await Technician.findById(req.params.id);
+        if (!exists) throw new AppError('Technician not found', 404);
+        throw new AppError('Technician is already approved', 409);
     }
-
-    if (technician.verificationStatus === 'approved') {
-        throw new AppError('Technician is already approved', 400);
-    }
-
-    technician.verificationStatus = 'approved';
-    technician.verifiedAt = new Date();
-    technician.rejectionReason = undefined;
-    await technician.save();
 
     res.status(200).json({
         success: true,
@@ -190,20 +197,27 @@ const rejectTechnician = asyncHandler(async (req, res) => {
         throw new AppError('Rejection reason is required', 400);
     }
 
-    const technician = await Technician.findById(req.params.id);
+    // ── Atomic reject: only if not already rejected ──
+    const technician = await Technician.findOneAndUpdate(
+        {
+            _id: req.params.id,
+            verificationStatus: { $ne: 'rejected' },
+        },
+        {
+            $set: {
+                verificationStatus: 'rejected',
+                rejectionReason: reason,
+            },
+            $unset: { verifiedAt: 1 },
+        },
+        { new: true }
+    );
 
     if (!technician) {
-        throw new AppError('Technician not found', 404);
+        const exists = await Technician.findById(req.params.id);
+        if (!exists) throw new AppError('Technician not found', 404);
+        throw new AppError('Technician is already rejected', 409);
     }
-
-    if (technician.verificationStatus === 'rejected') {
-        throw new AppError('Technician is already rejected', 400);
-    }
-
-    technician.verificationStatus = 'rejected';
-    technician.rejectionReason = reason;
-    technician.verifiedAt = undefined;
-    await technician.save();
 
     res.status(200).json({
         success: true,

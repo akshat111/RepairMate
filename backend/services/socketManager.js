@@ -1,6 +1,7 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const { bookingBus, BOOKING_EVENTS } = require('./bookingEvents');
+const logger = require('../utils/logger');
 
 // ═══════════════════════════════════════════════════════
 // SOCKET.IO MANAGER
@@ -58,7 +59,7 @@ const initSocket = (httpServer) => {
     // ── Connection handler ─────────────────────────────
     io.on('connection', (socket) => {
         const { userId } = socket;
-        console.log(`🔌 Socket connected: ${userId} (${socket.id})`);
+        logger.debug('Socket connected', { userId, socketId: socket.id });
 
         // Auto-join personal room
         socket.join(`user:${userId}`);
@@ -83,14 +84,14 @@ const initSocket = (httpServer) => {
         });
 
         socket.on('disconnect', (reason) => {
-            console.log(`🔌 Socket disconnected: ${userId} (${reason})`);
+            logger.debug('Socket disconnected', { userId, reason });
         });
     });
 
     // ── Subscribe to booking events ────────────────────
     registerBookingListeners();
 
-    console.log('📡 Socket.io initialized');
+    logger.info('Socket.io initialized');
     return io;
 };
 

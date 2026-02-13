@@ -18,6 +18,8 @@
 // }
 // ═══════════════════════════════════════════════════════
 
+const logger = require('../utils/logger');
+
 /**
  * Console channel — logs notifications to stdout.
  * Active in all environments. Useful for debugging.
@@ -27,12 +29,14 @@ const consoleChannel = {
     enabled: true,
 
     send: async (notification) => {
-        console.log(
-            `📬 [${notification.type}] → ${notification.recipientId}: ${notification.subject}`
-        );
+        logger.info('Notification dispatched', {
+            type: notification.type,
+            recipientId: notification.recipientId,
+            subject: notification.subject,
+        });
 
         if (process.env.NODE_ENV === 'development') {
-            console.log(`   ${notification.body}`);
+            logger.debug('Notification body', { body: notification.body });
         }
     },
 };
@@ -75,7 +79,7 @@ const emailChannel = {
         //   subject: notification.subject,
         //   text: notification.body,
         // });
-        console.log(`📧 [EMAIL STUB] → ${notification.recipientEmail}: ${notification.subject}`);
+        logger.debug('Email stub sent', { to: notification.recipientEmail, subject: notification.subject });
     },
 };
 
@@ -94,7 +98,7 @@ const smsChannel = {
         //   to: notification.recipientPhone,
         //   body: notification.body,
         // });
-        console.log(`📱 [SMS STUB] → ${notification.recipientPhone}: ${notification.body}`);
+        logger.debug('SMS stub sent', { to: notification.recipientPhone, body: notification.body });
     },
 };
 

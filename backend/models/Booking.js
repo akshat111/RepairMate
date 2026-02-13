@@ -34,6 +34,16 @@ const bookingSchema = new mongoose.Schema(
             trim: true,
             maxlength: [100, 'Service type cannot exceed 100 characters'],
         },
+        issueType: {
+            type: String,
+            trim: true,
+            maxlength: [50, 'Issue type cannot exceed 50 characters'],
+        },
+        urgency: {
+            type: String,
+            enum: ['normal', 'urgent', 'emergency'],
+            default: 'normal',
+        },
         description: {
             type: String,
             required: [true, 'Description is required'],
@@ -81,6 +91,18 @@ const bookingSchema = new mongoose.Schema(
             type: Number,
             min: [0, 'Cost cannot be negative'],
         },
+        pricingBreakdown: {
+            basePrice: Number,
+            urgency: String,
+            multiplier: Number,
+            computed: Number,
+            ruleId: { type: mongoose.Schema.Types.ObjectId, ref: 'PricingRule' },
+        },
+        paymentStatus: {
+            type: String,
+            enum: ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'],
+            default: 'pending',
+        },
         isPaid: {
             type: Boolean,
             default: false,
@@ -108,6 +130,28 @@ const bookingSchema = new mongoose.Schema(
         cancelledAt: { type: Date },
         cancellationReason: { type: String, trim: true },
         startedAt: { type: Date }, // When technician marks in_progress
+
+        // ── Reschedule tracking ───────────────────────────
+        rescheduleCount: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+        rescheduleHistory: [
+            {
+                from: {
+                    date: Date,
+                    timeSlot: String,
+                },
+                to: {
+                    date: Date,
+                    timeSlot: String,
+                },
+                reason: { type: String, trim: true },
+                rescheduledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+                rescheduledAt: { type: Date, default: Date.now },
+            },
+        ],
     },
     {
         timestamps: true,
@@ -118,5 +162,6 @@ const bookingSchema = new mongoose.Schema(
 bookingSchema.index({ user: 1, createdAt: -1 });
 bookingSchema.index({ technician: 1, status: 1 });
 bookingSchema.index({ status: 1, preferredDate: 1 });
+bookingSchema.index({ paymentStatus: 1 });
 
 module.exports = mongoose.model('Booking', bookingSchema);
