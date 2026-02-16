@@ -1,15 +1,26 @@
-import { Link } from 'react-router-dom';
+import Navbar from '../components/Navbar/Navbar';
+import HeroSection from '../components/HeroSection/HeroSection';
+import BookingForm from '../components/BookingForm/BookingForm';
+import HowItWorks from '../components/HowItWorks/HowItWorks';
+import DevicesSection from '../components/DevicesSection/DevicesSection';
+import TrustSection from '../components/TrustSection/TrustSection';
+import ReviewsSection from '../components/ReviewsSection/ReviewsSection';
+import CTASection from '../components/CTASection/CTASection';
+import Footer from '../components/Footer/Footer';
 
 const Home = () => {
     return (
-        <div className="page home-page">
-            <h1>Welcome to RepairMate</h1>
-            <p>Your trusted repair service platform.</p>
-            <div className="home-actions">
-                <Link to="/login" className="btn btn-primary">Sign In</Link>
-                <Link to="/register" className="btn btn-secondary">Create Account</Link>
-            </div>
-        </div>
+        <>
+            <Navbar />
+            <HeroSection />
+            <BookingForm />
+            <HowItWorks />
+            <DevicesSection />
+            <TrustSection />
+            <ReviewsSection />
+            <CTASection />
+            <Footer />
+        </>
     );
 };
 

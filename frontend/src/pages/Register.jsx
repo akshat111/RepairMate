@@ -34,13 +34,26 @@ const Register = () => {
     };
 
     return (
-        <div className="page auth-page">
-            <div className="auth-card">
-                <h2>Create Account</h2>
-                {error && <div className="alert alert-error">{error}</div>}
-                <form onSubmit={handleSubmit}>
-                    <div className="form-group">
-                        <label htmlFor="name">Full Name</label>
+        <div className="min-h-screen bg-background-light flex items-center justify-center px-4 py-12">
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-100 p-8">
+                <div className="flex items-center gap-2 mb-8">
+                    <Link to="/" className="flex items-center gap-2 no-underline">
+                        <span className="material-icons text-primary text-2xl">build_circle</span>
+                        <span className="font-extrabold text-xl text-slate-900">RepairMate</span>
+                    </Link>
+                </div>
+
+                <h2 className="text-2xl font-extrabold text-slate-900 mb-6">Create Account</h2>
+
+                {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm mb-6">
+                        {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    <div>
+                        <label htmlFor="name" className="block text-sm font-semibold text-slate-700 mb-1.5">Full Name</label>
                         <input
                             id="name"
                             name="name"
@@ -49,10 +62,11 @@ const Register = () => {
                             onChange={handleChange}
                             placeholder="John Doe"
                             required
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                         />
                     </div>
-                    <div className="form-group">
-                        <label htmlFor="email">Email</label>
+                    <div>
+                        <label htmlFor="email" className="block text-sm font-semibold text-slate-700 mb-1.5">Email</label>
                         <input
                             id="email"
                             name="email"
@@ -61,10 +75,11 @@ const Register = () => {
                             onChange={handleChange}
                             placeholder="you@example.com"
                             required
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                         />
                     </div>
-                    <div className="form-group">
-                        <label htmlFor="phone">Phone</label>
+                    <div>
+                        <label htmlFor="phone" className="block text-sm font-semibold text-slate-700 mb-1.5">Phone</label>
                         <input
                             id="phone"
                             name="phone"
@@ -73,10 +88,11 @@ const Register = () => {
                             onChange={handleChange}
                             placeholder="9876543210"
                             required
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                         />
                     </div>
-                    <div className="form-group">
-                        <label htmlFor="password">Password</label>
+                    <div>
+                        <label htmlFor="password" className="block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
                         <input
                             id="password"
                             name="password"
@@ -86,10 +102,11 @@ const Register = () => {
                             placeholder="Minimum 8 characters"
                             minLength={8}
                             required
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                         />
                     </div>
-                    <div className="form-group">
-                        <label htmlFor="confirmPassword">Confirm Password</label>
+                    <div>
+                        <label htmlFor="confirmPassword" className="block text-sm font-semibold text-slate-700 mb-1.5">Confirm Password</label>
                         <input
                             id="confirmPassword"
                             name="confirmPassword"
@@ -99,14 +116,20 @@ const Register = () => {
                             placeholder="Re-enter password"
                             minLength={8}
                             required
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                         />
                     </div>
-                    <button type="submit" className="btn btn-primary btn-block">
+                    <button
+                        type="submit"
+                        className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-primary/30 transition-all"
+                    >
                         Create Account
                     </button>
                 </form>
-                <p className="auth-switch">
-                    Already have an account? <Link to="/login">Sign In</Link>
+
+                <p className="text-center text-sm text-slate-500 mt-6">
+                    Already have an account?{' '}
+                    <Link to="/login" className="text-primary font-semibold hover:underline">Sign In</Link>
                 </p>
             </div>
         </div>
