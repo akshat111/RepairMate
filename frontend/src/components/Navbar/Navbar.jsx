@@ -14,6 +14,10 @@ const Navbar = () => {
                         <a className="text-slate-600 hover:text-primary font-medium transition-colors no-underline" href="#services">Services</a>
                         <a className="text-slate-600 hover:text-primary font-medium transition-colors no-underline" href="#how-it-works">How it Works</a>
                         <a className="text-slate-600 hover:text-primary font-medium transition-colors no-underline" href="#reviews">Reviews</a>
+                        <Link to="/login" className="text-slate-700 hover:text-primary font-semibold transition-colors no-underline flex items-center gap-1.5">
+                            <span className="material-icons text-lg">login</span>
+                            Sign In
+                        </Link>
                         <Link to="/register" className="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg font-bold transition-all shadow-lg shadow-primary/20 no-underline">
                             Book Repair
                         </Link>

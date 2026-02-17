@@ -1,9 +1,13 @@
 import { createBrowserRouter } from 'react-router-dom';
 import ProtectedRoute from '../components/ProtectedRoute';
+import DashboardLayout from '../components/DashboardLayout/DashboardLayout';
 import Home from '../pages/Home';
 import Login from '../pages/Login';
 import Register from '../pages/Register';
 import Dashboard from '../pages/Dashboard';
+import Bookings from '../pages/Bookings';
+import Profile from '../pages/Profile';
+import BookRepair from '../pages/BookRepair';
 import NotFound from '../pages/NotFound';
 import Unauthorized from '../pages/Unauthorized';
 
@@ -36,7 +40,25 @@ const router = createBrowserRouter([
         children: [
             {
                 path: '/dashboard',
-                element: <Dashboard />,
+                element: <DashboardLayout />,
+                children: [
+                    {
+                        index: true,
+                        element: <Dashboard />,
+                    },
+                    {
+                        path: 'bookings',
+                        element: <Bookings />,
+                    },
+                    {
+                        path: 'profile',
+                        element: <Profile />,
+                    },
+                ],
+            },
+            {
+                path: '/book-repair',
+                element: <BookRepair />,
             },
         ],
     },

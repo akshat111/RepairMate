@@ -52,7 +52,7 @@ api.interceptors.response.use(
         const originalRequest = error.config;
 
         // Skip retry for login/register/refresh endpoints
-        const skipPaths = ['/auth/login', '/auth/register', '/auth/refresh-token'];
+        const skipPaths = ['/auth/login', '/auth/register', '/auth/refresh'];
         if (skipPaths.some((path) => originalRequest.url?.includes(path))) {
             return Promise.reject(error);
         }
@@ -72,11 +72,11 @@ api.interceptors.response.use(
 
             try {
                 const { data } = await axios.post(
-                    `${API_BASE_URL}/auth/refresh-token`,
+                    `${API_BASE_URL}/auth/refresh`,
                     {},
                     { withCredentials: true }
                 );
-                const newToken = data.data?.accessToken;
+                const newToken = data.accessToken || data.data?.accessToken;
                 if (newToken) {
                     localStorage.setItem('accessToken', newToken);
                     api.defaults.headers.common.Authorization = `Bearer ${newToken}`;

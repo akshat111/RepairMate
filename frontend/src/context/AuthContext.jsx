@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
         setError(null);
         try {
             const { data } = await authService.login(credentials);
-            const accessToken = data.data?.accessToken;
+            const accessToken = data.accessToken || data.data?.accessToken;
             if (accessToken) {
                 localStorage.setItem('accessToken', accessToken);
             }
@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }) => {
         setError(null);
         try {
             const { data } = await authService.register(userData);
-            const accessToken = data.data?.accessToken;
+            const accessToken = data.accessToken || data.data?.accessToken;
             if (accessToken) {
                 localStorage.setItem('accessToken', accessToken);
             }
