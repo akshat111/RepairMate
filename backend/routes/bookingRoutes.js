@@ -7,6 +7,8 @@ const {
     rescheduleBooking,
     getAssignedBookings,
     startBooking,
+    acceptBooking,
+    rejectAssignment,
     completeBooking,
     getAllBookings,
     assignTechnician,
@@ -44,6 +46,8 @@ router.patch(
 
 // ── Technician routes ─────────────────────────────────
 router.get('/assigned/me', validate(schemas.booking.query, 'query'), authorize('technician', 'admin'), getAssignedBookings);
+router.patch('/:id/accept', validate(schemas.mongoIdParam, 'params'), authorize('technician'), acceptBooking);
+router.patch('/:id/reject-assignment', validate(schemas.mongoIdParam, 'params'), authorize('technician'), rejectAssignment);
 router.patch('/:id/start', validate(schemas.mongoIdParam, 'params'), authorize('technician'), startBooking);
 router.patch(
     '/:id/complete',

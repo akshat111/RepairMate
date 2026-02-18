@@ -8,6 +8,7 @@ import Dashboard from '../pages/Dashboard';
 import Bookings from '../pages/Bookings';
 import Profile from '../pages/Profile';
 import BookRepair from '../pages/BookRepair';
+import TechnicianDashboard from '../pages/TechnicianDashboard';
 import NotFound from '../pages/NotFound';
 import Unauthorized from '../pages/Unauthorized';
 
@@ -75,7 +76,26 @@ const router = createBrowserRouter([
     {
         element: <ProtectedRoute allowedRoles={['technician', 'admin']} />,
         children: [
-            // Technician pages will go here
+            {
+                path: '/technician/dashboard',
+                element: <TechnicianDashboard />,
+            },
+            {
+                path: '/technician/jobs',
+                element: <TechnicianDashboard />,
+            },
+            {
+                path: '/technician/history',
+                element: <TechnicianDashboard />,
+            },
+            {
+                path: '/technician/inventory',
+                element: <TechnicianDashboard />,
+            },
+            {
+                path: '/technician/earnings',
+                element: <TechnicianDashboard />,
+            },
         ],
     },
 

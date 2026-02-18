@@ -3,10 +3,23 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 // ═══════════════════════════════════════════════════════
-// CUSTOMER LOGIN PAGE
+// LOGIN PAGE — with role selector
 // ═══════════════════════════════════════════════════════
 
+const ROLES = [
+    { id: 'user', label: 'User', icon: 'person' },
+    { id: 'technician', label: 'Technician', icon: 'engineering' },
+    { id: 'admin', label: 'Admin', icon: 'admin_panel_settings' },
+];
+
+const ROLE_DASHBOARD_MAP = {
+    user: '/dashboard',
+    technician: '/technician/dashboard',
+    admin: '/dashboard',
+};
+
 const Login = () => {
+    const [selectedRole, setSelectedRole] = useState('user');
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [validationErrors, setValidationErrors] = useState({});
     const [isLoading, setIsLoading] = useState(false);
@@ -53,9 +66,17 @@ const Login = () => {
 
         setIsLoading(true);
         try {
-            // Send credentials — backend determines role/permissions
-            await login({ email: formData.email, password: formData.password });
-            navigate('/dashboard');
+            // Send credentials + selected role as metadata
+            // Backend determines actual role — frontend trusts backend response
+            const result = await login({
+                email: formData.email,
+                password: formData.password,
+                role: selectedRole,
+            });
+
+            // Navigate based on backend-returned role, fallback to selectedRole hint
+            const backendRole = result?.data?.user?.role || selectedRole;
+            navigate(ROLE_DASHBOARD_MAP[backendRole] || '/dashboard');
         } catch {
             // Error is set via AuthContext
         } finally {
@@ -76,7 +97,32 @@ const Login = () => {
 
                 {/* Heading */}
                 <h2 className="text-2xl font-extrabold text-slate-900 mb-2">Welcome Back</h2>
-                <p className="text-sm text-slate-500 mb-6">Sign in to track your repairs and bookings</p>
+                <p className="text-sm text-slate-500 mb-6">Sign in to your account</p>
+
+                {/* Role Selector */}
+                <div className="mb-6">
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Sign in as</label>
+                    <div className="grid grid-cols-3 gap-2">
+                        {ROLES.map((role) => (
+                            <button
+                                key={role.id}
+                                type="button"
+                                onClick={() => setSelectedRole(role.id)}
+                                className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 transition-all text-center ${selectedRole === role.id
+                                    ? 'border-primary bg-primary/5 text-primary shadow-sm shadow-primary/10'
+                                    : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300 hover:bg-white'
+                                    }`}
+                            >
+                                <span className={`material-icons text-xl ${selectedRole === role.id ? 'text-primary' : 'text-slate-400'}`}>
+                                    {role.icon}
+                                </span>
+                                <span className={`text-xs font-semibold ${selectedRole === role.id ? 'text-primary' : 'text-slate-600'}`}>
+                                    {role.label}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
 
                 {/* Server Error */}
                 {error && (
@@ -104,8 +150,8 @@ const Login = () => {
                                 placeholder="you@example.com"
                                 autoComplete="email"
                                 className={`w-full bg-slate-50 border text-slate-700 py-3 pl-11 pr-4 rounded-xl focus:outline-none focus:ring-2 transition-colors ${validationErrors.email
-                                        ? 'border-red-300 focus:ring-red-200 focus:border-red-400'
-                                        : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
+                                    ? 'border-red-300 focus:ring-red-200 focus:border-red-400'
+                                    : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
                                     }`}
                             />
                         </div>
@@ -133,8 +179,8 @@ const Login = () => {
                                 placeholder="••••••••"
                                 autoComplete="current-password"
                                 className={`w-full bg-slate-50 border text-slate-700 py-3 pl-11 pr-4 rounded-xl focus:outline-none focus:ring-2 transition-colors ${validationErrors.password
-                                        ? 'border-red-300 focus:ring-red-200 focus:border-red-400'
-                                        : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
+                                    ? 'border-red-300 focus:ring-red-200 focus:border-red-400'
+                                    : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
                                     }`}
                             />
                         </div>

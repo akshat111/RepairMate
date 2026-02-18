@@ -21,6 +21,7 @@ const TRANSITIONS = {
     },
     assigned: {
         in_progress: ['technician'],
+        pending: ['technician'],
         cancelled: ['user', 'admin'],
     },
     in_progress: {
@@ -345,6 +346,127 @@ const startBooking = asyncHandler(async (req, res) => {
     res.status(200).json({
         success: true,
         message: 'Booking marked as in progress',
+        data: { booking },
+    });
+});
+
+/**
+ * @desc    Technician accepts an assigned booking (moves to in_progress)
+ * @route   PATCH /api/v1/bookings/:id/accept
+ * @access  Private (assigned technician)
+ */
+const acceptBooking = asyncHandler(async (req, res) => {
+    const techProfile = await Technician.findOne({ user: req.user._id });
+    if (!techProfile) {
+        throw new AppError('Technician profile not found', 403);
+    }
+
+    const booking = await Booking.findOneAndUpdate(
+        {
+            _id: req.params.id,
+            status: 'assigned',
+            technician: techProfile._id,
+        },
+        {
+            $set: {
+                status: 'in_progress',
+                startedAt: new Date(),
+            },
+            $push: {
+                statusHistory: {
+                    status: 'in_progress',
+                    changedBy: req.user._id,
+                    changedAt: new Date(),
+                    note: 'Accepted by technician',
+                },
+            },
+        },
+        { new: true }
+    ).populate('user', 'name email phone');
+
+    if (!booking) {
+        const exists = await Booking.findById(req.params.id);
+        if (!exists) throw new AppError('Booking not found', 404);
+        if (!exists.technician || exists.technician.toString() !== techProfile._id.toString()) {
+            throw new AppError('You are not assigned to this booking', 403);
+        }
+        throw new AppError(
+            `Cannot accept a booking with status '${exists.status}'`,
+            409
+        );
+    }
+
+    bookingBus.emit(BOOKING_EVENTS.STARTED, {
+        booking,
+        userId: booking.user._id?.toString() || booking.user.toString(),
+        technicianId: req.user._id.toString(),
+        changedBy: req.user._id.toString(),
+        previousStatus: 'assigned',
+        newStatus: 'in_progress',
+    });
+
+    res.status(200).json({
+        success: true,
+        message: 'Booking accepted',
+        data: { booking },
+    });
+});
+
+/**
+ * @desc    Technician rejects an assigned booking (reverts to pending, unassigns tech)
+ * @route   PATCH /api/v1/bookings/:id/reject-assignment
+ * @access  Private (assigned technician)
+ */
+const rejectAssignment = asyncHandler(async (req, res) => {
+    const techProfile = await Technician.findOne({ user: req.user._id });
+    if (!techProfile) {
+        throw new AppError('Technician profile not found', 403);
+    }
+
+    const booking = await Booking.findOneAndUpdate(
+        {
+            _id: req.params.id,
+            status: 'assigned',
+            technician: techProfile._id,
+        },
+        {
+            $set: {
+                status: 'pending',
+                technician: null,
+            },
+            $push: {
+                statusHistory: {
+                    status: 'pending',
+                    changedBy: req.user._id,
+                    changedAt: new Date(),
+                    note: `Rejected by technician: ${req.body.reason || 'No reason provided'}`,
+                },
+            },
+        },
+        { new: true }
+    ).populate('user', 'name email phone');
+
+    if (!booking) {
+        const exists = await Booking.findById(req.params.id);
+        if (!exists) throw new AppError('Booking not found', 404);
+        if (!exists.technician || exists.technician.toString() !== techProfile._id.toString()) {
+            throw new AppError('You are not assigned to this booking', 403);
+        }
+        throw new AppError(
+            `Cannot reject a booking with status '${exists.status}'`,
+            409
+        );
+    }
+
+    logger.info('Technician rejected assignment', {
+        bookingId: booking._id,
+        technicianId: techProfile._id,
+        reason: req.body.reason,
+    });
+
+    res.status(200).json({
+        success: true,
+        message: 'Assignment rejected. Booking returned to pending.',
         data: { booking },
     });
 });
@@ -684,6 +806,8 @@ module.exports = {
     rescheduleBooking,
     getAssignedBookings,
     startBooking,
+    acceptBooking,
+    rejectAssignment,
     completeBooking,
     getAllBookings,
     assignTechnician,
