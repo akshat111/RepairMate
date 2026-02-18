@@ -32,9 +32,19 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // ── CORS ──────────────────────────────────────────────
+const allowedOrigins = [
+    'http://localhost:5173',
+    'https://repair-mate-theta.vercel.app',
+];
 app.use(
     cors({
-        origin: process.env.CORS_ORIGIN || '*',
+        origin: (origin, callback) => {
+            // Allow requests with no origin (mobile apps, curl, server-to-server)
+            if (!origin || allowedOrigins.includes(origin)) {
+                return callback(null, true);
+            }
+            return callback(new Error('Not allowed by CORS'));
+        },
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
         credentials: true,
     })

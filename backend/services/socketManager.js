@@ -28,7 +28,10 @@ let io = null;
 const initSocket = (httpServer) => {
     io = new Server(httpServer, {
         cors: {
-            origin: process.env.CORS_ORIGIN || '*',
+            origin: [
+                'http://localhost:5173',
+                'https://repair-mate-theta.vercel.app',
+            ],
             methods: ['GET', 'POST'],
             credentials: true,
         },
