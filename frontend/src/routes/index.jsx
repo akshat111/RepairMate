@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom';
 import ProtectedRoute from '../components/ProtectedRoute';
 import DashboardLayout from '../components/DashboardLayout/DashboardLayout';
+import AdminLayout from '../components/AdminLayout/AdminLayout';
 import Home from '../pages/Home';
 import Login from '../pages/Login';
 import Register from '../pages/Register';
@@ -9,6 +10,13 @@ import Bookings from '../pages/Bookings';
 import Profile from '../pages/Profile';
 import BookRepair from '../pages/BookRepair';
 import TechnicianDashboard from '../pages/TechnicianDashboard';
+import AdminDashboard from '../pages/admin/AdminDashboard';
+import AdminBookings from '../pages/admin/AdminBookings';
+import AdminTechnicians from '../pages/admin/AdminTechnicians';
+import AdminCustomers from '../pages/admin/AdminCustomers';
+import AdminInventory from '../pages/admin/AdminInventory';
+import AdminRevenue from '../pages/admin/AdminRevenue';
+import AdminSettings from '../pages/admin/AdminSettings';
 import NotFound from '../pages/NotFound';
 import Unauthorized from '../pages/Unauthorized';
 
@@ -68,7 +76,19 @@ const router = createBrowserRouter([
     {
         element: <ProtectedRoute allowedRoles={['admin']} />,
         children: [
-            // Admin pages will go here
+            {
+                path: '/admin',
+                element: <AdminLayout />,
+                children: [
+                    { index: true, element: <AdminDashboard /> },
+                    { path: 'bookings', element: <AdminBookings /> },
+                    { path: 'technicians', element: <AdminTechnicians /> },
+                    { path: 'customers', element: <AdminCustomers /> },
+                    { path: 'inventory', element: <AdminInventory /> },
+                    { path: 'revenue', element: <AdminRevenue /> },
+                    { path: 'settings', element: <AdminSettings /> },
+                ],
+            },
         ],
     },
 

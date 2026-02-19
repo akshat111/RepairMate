@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RepairMate Project Thumbnail</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+
+        .thumbnail-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: radial-gradient(circle at 80% 20%, rgba(56, 189, 248, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 20% 80%, rgba(79, 70, 229, 0.15) 0%, transparent 50%);
+        }
+
+        /* Glass Card */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 32px;
+            padding: 80px 120px;
+            display: flex;
+            align-items: center;
+            gap: 60px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Logo Area */
+        .logo-wrapper {
+            width: 180px;
+            height: 180px;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 20px 40px -10px rgba(37, 99, 235, 0.5);
+            position: relative;
+        }
+
+        .logo-wrapper::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 40px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .logo-icon {
+            color: white;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+        }
+
+        /* Typography */
+        .text-content {
+            display: flex;
+            flex-direction: column;
+        }
+
+        h1 {
+            font-size: 96px;
+            font-weight: 800;
+            margin: 0;
+            background: linear-gradient(to right, #ffffff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -2px;
+            line-height: 1;
+        }
+
+        p {
+            font-size: 32px;
+            color: #94a3b8;
+            margin: 16px 0 0 0;
+            font-weight: 500;
+            letter-spacing: -0.5px;
+        }
+
+        /* Floating Elements */
+        .floating-ui {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 16px 24px;
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .ui-1 {
+            top: 15%;
+            right: 15%;
+            animation-delay: 0s;
+            transform: rotate(5deg);
+        }
+
+        .ui-2 {
+            bottom: 20%;
+            left: 10%;
+            animation-delay: 2s;
+            transform: rotate(-3deg);
+        }
+
+        .ui-3 {
+            top: 25%;
+            left: 15%;
+            animation-delay: 4s;
+            transform: rotate(-5deg) scale(0.8);
+            opacity: 0.6;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0) rotate(var(--rot));
+            }
+
+            50% {
+                transform: translateY(-20px) rotate(var(--rot));
+            }
+        }
+
+        .badge {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .badge-green {
+            background: #22c55e;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+        }
+
+        .badge-amber {
+            background: #f59e0b;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+        }
+
+        .ui-text {
+            color: #e2e8f0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Abstract Shapes */
+        .shape {
+            position: absolute;
+            filter: blur(80px);
+            opacity: 0.4;
+            z-index: 0;
+        }
+
+        .shape-1 {
+            top: -10%;
+            right: -10%;
+            width: 600px;
+            height: 600px;
+            background: #3b82f6;
+            border-radius: 50%;
+        }
+
+        .shape-2 {
+            bottom: -20%;
+            left: -10%;
+            width: 500px;
+            height: 500px;
+            background: #6366f1;
+            border-radius: 50%;
+        }
+    </style>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="thumbnail-container">
+        <!-- Background Shapes -->
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+
+        <!-- Floating UI Elements -->
+        <div class="floating-ui ui-1" style="--rot: 5deg">
+            <div class="badge badge-green"></div>
+            <span class="ui-text">repair_completed</span>
+        </div>
+
+        <div class="floating-ui ui-2" style="--rot: -3deg">
+            <div class="badge badge-amber"></div>
+            <span class="ui-text">technician_assigned</span>
+        </div>
+
+        <!-- Main Card -->
+        <div class="glass-card">
+            <div class="logo-wrapper">
+                <!-- Wrench & Phone Icon SVG -->
+                <svg width="96" height="96" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                    class="logo-icon">
+                    <path
+                        d="M17 6H7C5.89543 6 5 6.89543 5 8V18C5 19.1046 5.89543 20 7 20H17C18.1046 20 19 19.1046 19 18V8C19 6.89543 18.1046 6 17 6Z"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M12 12V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <path d="M12 2V4" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <path d="M14.7 6.3L13.3 7.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <path d="M9.3 6.3L10.7 7.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+            </div>
+            <div class="text-content">
+                <h1>RepairMate</h1>
+                <p>Modern Device Repair Platform</p>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

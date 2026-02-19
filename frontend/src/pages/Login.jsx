@@ -15,7 +15,7 @@ const ROLES = [
 const ROLE_DASHBOARD_MAP = {
     user: '/dashboard',
     technician: '/technician/dashboard',
-    admin: '/dashboard',
+    admin: '/admin',
 };
 
 const Login = () => {
