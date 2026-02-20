@@ -61,22 +61,9 @@ const createBooking = asyncHandler(async (req, res) => {
     // ── Calculate price from pricing rules ───────────────
     const pricing = await calculatePrice({ serviceType, issueType, urgency });
 
-    // ── Attempt auto-assignment ───────────────────────
-    const matchedTech = await findBestMatch({ serviceType });
-
     const statusHistory = [{ status: 'pending', changedBy: req.user._id }];
-    let initialStatus = 'pending';
-    let technicianId = null;
-
-    if (matchedTech) {
-        technicianId = matchedTech._id;
-        initialStatus = 'assigned';
-        statusHistory.push({
-            status: 'assigned',
-            changedBy: req.user._id,
-            note: 'Auto-assigned by matching engine',
-        });
-    }
+    const initialStatus = 'pending';
+    const technicianId = null;
 
     const booking = await Booking.create({
         user: req.user._id,
@@ -99,16 +86,11 @@ const createBooking = asyncHandler(async (req, res) => {
         statusHistory,
     });
 
-    // Populate technician info if assigned
-    if (technicianId) {
-        await booking.populate('technician', 'specializations averageRating');
-    }
-
     // Emit real-time event
     bookingBus.emit(BOOKING_EVENTS.CREATED, {
         booking,
         userId: req.user._id.toString(),
-        technicianId: matchedTech ? matchedTech.user?.toString() : null,
+        technicianId: null,
         changedBy: req.user._id.toString(),
         previousStatus: null,
         newStatus: initialStatus,
@@ -116,10 +98,8 @@ const createBooking = asyncHandler(async (req, res) => {
 
     res.status(201).json({
         success: true,
-        message: matchedTech
-            ? 'Booking created and technician auto-assigned'
-            : 'Booking created. Awaiting technician assignment.',
-        autoAssigned: !!matchedTech,
+        message: 'Booking created. Awaiting technician assignment.',
+        autoAssigned: false,
         data: { booking },
     });
 });
@@ -280,6 +260,52 @@ const getAssignedBookings = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Get open (pending) bookings available for claiming
+ * @route   GET /api/v1/bookings/open
+ * @access  Private (technician)
+ */
+const getOpenBookings = asyncHandler(async (req, res) => {
+    const techProfile = await Technician.findOne({ user: req.user._id });
+
+    if (!techProfile) {
+        throw new AppError('No technician profile found for this user', 404);
+    }
+
+    if (techProfile.verificationStatus !== 'approved') {
+        throw new AppError('You must be verified to view open bookings', 403);
+    }
+
+    const { page = 1, limit = 10 } = req.query;
+
+    // Optional: Filter by technician's service area or specializations
+    // For now, return all pending bookings without a technician
+    const filter = {
+        status: 'pending',
+        technician: null
+    };
+
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+
+    const [bookings, total] = await Promise.all([
+        Booking.find(filter)
+            .populate('user', 'name address') // Don't expose phone/email until accepted
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit, 10)),
+        Booking.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+        success: true,
+        count: bookings.length,
+        total,
+        page: parseInt(page, 10),
+        pages: Math.ceil(total / parseInt(limit, 10)),
+        data: { bookings },
+    });
+});
+
+/**
  * @desc    Mark booking as in_progress (technician starts work)
  * @route   PATCH /api/v1/bookings/:id/start
  * @access  Private (assigned technician)
@@ -351,9 +377,9 @@ const startBooking = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Technician accepts an assigned booking (moves to in_progress)
+ * @desc    Technician accepts an open booking (claims it)
  * @route   PATCH /api/v1/bookings/:id/accept
- * @access  Private (assigned technician)
+ * @access  Private (approved technician)
  */
 const acceptBooking = asyncHandler(async (req, res) => {
     const techProfile = await Technician.findOne({ user: req.user._id });
@@ -361,23 +387,28 @@ const acceptBooking = asyncHandler(async (req, res) => {
         throw new AppError('Technician profile not found', 403);
     }
 
+    if (techProfile.verificationStatus !== 'approved') {
+        throw new AppError('You must be a verified technician to accept bookings', 403);
+    }
+
+    // ── Atomic claim: booking must be 'pending' and unassigned ──
     const booking = await Booking.findOneAndUpdate(
         {
             _id: req.params.id,
-            status: 'assigned',
-            technician: techProfile._id,
+            status: 'pending',
+            technician: null,
         },
         {
             $set: {
-                status: 'in_progress',
-                startedAt: new Date(),
+                status: 'assigned', // Move to assigned (or in_progress if you prefer immediate start)
+                technician: techProfile._id,
             },
             $push: {
                 statusHistory: {
-                    status: 'in_progress',
+                    status: 'assigned',
                     changedBy: req.user._id,
                     changedAt: new Date(),
-                    note: 'Accepted by technician',
+                    note: 'Claimed by technician',
                 },
             },
         },
@@ -387,8 +418,8 @@ const acceptBooking = asyncHandler(async (req, res) => {
     if (!booking) {
         const exists = await Booking.findById(req.params.id);
         if (!exists) throw new AppError('Booking not found', 404);
-        if (!exists.technician || exists.technician.toString() !== techProfile._id.toString()) {
-            throw new AppError('You are not assigned to this booking', 403);
+        if (exists.technician) {
+            throw new AppError('This booking has already been claimed by another technician', 409);
         }
         throw new AppError(
             `Cannot accept a booking with status '${exists.status}'`,
@@ -396,18 +427,18 @@ const acceptBooking = asyncHandler(async (req, res) => {
         );
     }
 
-    bookingBus.emit(BOOKING_EVENTS.STARTED, {
+    bookingBus.emit(BOOKING_EVENTS.ASSIGNED, {
         booking,
         userId: booking.user._id?.toString() || booking.user.toString(),
-        technicianId: req.user._id.toString(),
+        technicianId: techProfile.user?.toString() || req.user._id.toString(),
         changedBy: req.user._id.toString(),
-        previousStatus: 'assigned',
-        newStatus: 'in_progress',
+        previousStatus: 'pending',
+        newStatus: 'assigned',
     });
 
     res.status(200).json({
         success: true,
-        message: 'Booking accepted',
+        message: 'Booking claimed successfully',
         data: { booking },
     });
 });
@@ -805,6 +836,7 @@ module.exports = {
     cancelBooking,
     rescheduleBooking,
     getAssignedBookings,
+    getOpenBookings,
     startBooking,
     acceptBooking,
     rejectAssignment,

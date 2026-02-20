@@ -101,7 +101,20 @@ const AdminDashboard = () => {
     }, [fetchData]);
 
     // Extract metrics from dashboard data
-    const metrics = dashboard || {};
+    const metrics = {
+        totalRevenue: dashboard?.revenue?.completedRevenue || 0,
+        totalBookings: dashboard?.revenue?.totalBookings || 0,
+        activeBookings: dashboard?.bookings?.byStatus?.reduce((acc, curr) => {
+            if (['pending', 'assigned', 'in_progress'].includes(curr._id)) {
+                return acc + curr.count;
+            }
+            return acc;
+        }, 0) || 0,
+        onlineTechnicians: dashboard?.technicians?.online || 0,
+        // Trends are not yet supported by backend
+        revenueGrowth: 0,
+        bookingGrowth: 0
+    };
 
     return (
         <div className="space-y-8">
@@ -117,8 +130,8 @@ const AdminDashboard = () => {
                             key={opt.value}
                             onClick={() => setPeriod(opt.value)}
                             className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${period === opt.value
-                                    ? 'bg-primary text-white shadow-sm'
-                                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                                ? 'bg-primary text-white shadow-sm'
+                                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                                 }`}
                         >
                             {opt.label}

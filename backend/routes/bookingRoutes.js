@@ -6,6 +6,7 @@ const {
     cancelBooking,
     rescheduleBooking,
     getAssignedBookings,
+    getOpenBookings,
     startBooking,
     acceptBooking,
     rejectAssignment,
@@ -29,6 +30,7 @@ router.use(protect);
 // ── User routes ───────────────────────────────────────
 router.post('/', authorize('user'), validate(schemas.booking.create), idempotent(), createBooking);
 router.get('/my', validate(schemas.booking.query, 'query'), getMyBookings);
+router.get('/open', validate(schemas.booking.query, 'query'), authorize('technician'), getOpenBookings);
 router.get('/:id', validate(schemas.mongoIdParam, 'params'), getBooking);
 router.patch(
     '/:id/cancel',

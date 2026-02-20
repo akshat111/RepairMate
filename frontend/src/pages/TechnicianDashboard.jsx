@@ -51,9 +51,10 @@ const TechnicianDashboard = () => {
     const [isOnline, setIsOnline] = useState(true);
     const [activeNav, setActiveNav] = useState('dashboard');
 
-    // ── Data state ──────────────────────────────────────
     const [bookings, setBookings] = useState([]);
+    const [openBookings, setOpenBookings] = useState([]);
     const [earnings, setEarnings] = useState(null);
+    const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [actionLoading, setActionLoading] = useState(null); // bookingId being actioned
@@ -66,26 +67,40 @@ const TechnicianDashboard = () => {
             setError(null);
             setNoProfile(false);
 
-            const [bookingsRes, earningsRes] = await Promise.allSettled([
-                technicianService.getAssignedBookings(),
-                technicianService.getEarningsDashboard(),
-            ]);
-
-            // If both return 404, the user has no Technician profile
-            const bookings404 = bookingsRes.status === 'rejected' && bookingsRes.reason?.response?.status === 404;
-            const earnings404 = earningsRes.status === 'rejected' && earningsRes.reason?.response?.status === 404;
-
-            if (bookings404 && earnings404) {
-                setNoProfile(true);
-                return;
+            // Fetch profile first to check verification status
+            let currentProfile = null;
+            try {
+                const profileRes = await technicianService.getMyProfile();
+                currentProfile = profileRes.data?.data?.technician;
+                setProfile(currentProfile);
+            } catch (err) {
+                if (err.response?.status === 404) {
+                    setNoProfile(true);
+                    return; // Stop if no profile
+                }
+                throw err;
             }
 
-            if (bookingsRes.status === 'fulfilled') {
-                setBookings(bookingsRes.value.data?.data?.bookings || []);
+            // Only fetch bookings and earnings if profile is approved or pending
+            // (Even if pending, we still load dashboard structure, just with a banner)
+            if (currentProfile) {
+                const [bookingsRes, openBookingsRes, earningsRes] = await Promise.allSettled([
+                    technicianService.getAssignedBookings(),
+                    technicianService.getOpenBookings(),
+                    technicianService.getEarningsDashboard(),
+                ]);
+
+                if (bookingsRes.status === 'fulfilled') {
+                    setBookings(bookingsRes.value.data?.data?.bookings || []);
+                }
+                if (openBookingsRes.status === 'fulfilled') {
+                    setOpenBookings(openBookingsRes.value.data?.data?.bookings || []);
+                }
+                if (earningsRes.status === 'fulfilled') {
+                    setEarnings(earningsRes.value.data?.data || null);
+                }
             }
-            if (earningsRes.status === 'fulfilled') {
-                setEarnings(earningsRes.value.data?.data || null);
-            }
+
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to load dashboard data');
         } finally {
@@ -98,6 +113,9 @@ const TechnicianDashboard = () => {
     }, [fetchDashboardData]);
 
     // ── Derived stats ───────────────────────────────────
+    const isPending = profile?.verificationStatus === 'pending';
+    const isRejected = profile?.verificationStatus === 'rejected';
+
     const todayStr = new Date().toDateString();
     const todayBookings = bookings.filter(
         (b) => new Date(b.preferredDate).toDateString() === todayStr
@@ -105,11 +123,10 @@ const TechnicianDashboard = () => {
     const pendingBookings = bookings.filter(
         (b) => b.status === 'assigned' || b.status === 'pending'
     );
-    const inProgressBookings = bookings.filter((b) => b.status === 'in_progress');
     const completedBookings = bookings.filter((b) => b.status === 'completed');
     const activeJobs = bookings.filter((b) => b.status === 'in_progress');
     const upcomingJobs = bookings.filter(
-        (b) => b.status === 'assigned' || b.status === 'pending'
+        (b) => b.status === 'assigned'
     );
     const assignedJobsCount = bookings.filter(
         (b) => b.status !== 'completed' && b.status !== 'cancelled'
@@ -280,7 +297,29 @@ const TechnicianDashboard = () => {
                 </aside>
 
                 {/* Main Content Area */}
-                <main className="flex-1 overflow-y-auto p-4 lg:p-8 grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <main className="flex-1 overflow-y-auto p-4 lg:p-8 grid grid-cols-1 xl:grid-cols-3 gap-6 relative">
+                    {/* Verification Status Banner */}
+                    {(isPending || isRejected) && (
+                        <div className="xl:col-span-3">
+                            <div className={`p-4 rounded-xl shadow-sm border flex items-start gap-4 ${isPending ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}`}>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isPending ? 'bg-amber-100 text-amber-600' : 'bg-red-100 text-red-600'}`}>
+                                    <span className="material-icons-round">{isPending ? 'pending_actions' : 'gpp_bad'}</span>
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className={`font-bold ${isPending ? 'text-amber-800' : 'text-red-800'}`}>
+                                        {isPending ? 'Account Pending Verification' : 'Account Rejected'}
+                                    </h3>
+                                    <p className={`text-sm mt-1 ${isPending ? 'text-amber-700' : 'text-red-700'}`}>
+                                        {isPending
+                                            ? 'Your technician profile is currently under review by our administration team. You cannot accept repair jobs until your account is approved. This usually takes 1-2 business days.'
+                                            : `Unfortunately, your technician application has been rejected. Reason: ${profile?.rejectionReason || 'No reason provided.'} Please contact support for more information.`
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Left Column: Assigned Jobs Feed (Span 2) */}
                     <div className="xl:col-span-2 space-y-6">
 
@@ -327,27 +366,27 @@ const TechnicianDashboard = () => {
                         </div>
 
                         {/* ══════════════════════════════════════════════ */}
-                        {/* NEW REPAIR INVITATIONS SECTION               */}
+                        {/* OPEN BOOKINGS SECTION                        */}
                         {/* ══════════════════════════════════════════════ */}
                         <div className="flex items-center justify-between mt-8 mb-4">
                             <div className="flex items-center gap-3">
-                                <h2 className="text-xl font-bold text-slate-900 dark:text-white">New Repair Invitations</h2>
-                                {upcomingJobs.length > 0 && (
+                                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Open Repair Jobs</h2>
+                                {openBookings.length > 0 && (
                                     <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold px-2.5 py-1 rounded-full animate-pulse">
-                                        {upcomingJobs.length} new
+                                        {openBookings.length} available
                                     </span>
                                 )}
                             </div>
                             <button className="px-3 py-1.5 text-sm font-medium bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700" onClick={fetchDashboardData}>Refresh</button>
                         </div>
 
-                        {upcomingJobs.length > 0 ? (
+                        {openBookings.length > 0 ? (
                             <div className="space-y-4">
-                                {upcomingJobs.map((job) => (
+                                {openBookings.map((job) => (
                                     <div key={job._id} className="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-amber-200 dark:border-amber-800/50 overflow-hidden relative hover:shadow-md transition-shadow">
                                         <div className="absolute top-4 right-4 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
                                             <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                                            NEW INVITATION
+                                            AVAILABLE
                                         </div>
                                         <div className="p-6">
                                             <div className="flex flex-col sm:flex-row gap-6">
@@ -386,26 +425,18 @@ const TechnicianDashboard = () => {
                                                     </div>
                                                     {job.estimatedCost && (
                                                         <div className="mb-4">
-                                                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Estimated: </span>
+                                                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Estimated Pay: </span>
                                                             <span className="text-sm font-bold text-green-600 dark:text-green-400">{formatCurrency(job.estimatedCost)}</span>
                                                         </div>
                                                     )}
                                                     <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                                                         <button
                                                             onClick={() => handleAcceptJob(job._id)}
-                                                            disabled={actionLoading === job._id}
+                                                            disabled={actionLoading === job._id || isPending}
                                                             className="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 shadow-sm"
                                                         >
                                                             <span className="material-icons-round text-sm">check_circle</span>
-                                                            {actionLoading === job._id ? 'Accepting...' : 'Accept'}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleRejectJob(job._id)}
-                                                            disabled={actionLoading === job._id}
-                                                            className="bg-white dark:bg-surface-dark border border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50"
-                                                        >
-                                                            <span className="material-icons-round text-sm">cancel</span>
-                                                            {actionLoading === job._id ? 'Rejecting...' : 'Reject'}
+                                                            {actionLoading === job._id ? 'Accepting...' : 'Accept Job'}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -417,9 +448,95 @@ const TechnicianDashboard = () => {
                         ) : (
                             <div className="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center">
                                 <span className="material-icons-round text-4xl text-slate-300 dark:text-slate-600">notifications_none</span>
-                                <p className="mt-3 text-slate-500 dark:text-slate-400 font-medium">No new repair invitations</p>
-                                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">When a customer books a repair, you'll see the invitation here</p>
+                                <p className="mt-3 text-slate-500 dark:text-slate-400 font-medium">No open repair jobs available right now</p>
+                                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">When a customer needs a repair in your area, you'll see it here.</p>
                             </div>
+                        )}
+
+                        {/* ══════════════════════════════════════════════ */}
+                        {/* UPCOMING ASSIGNED JOBS SECTION               */}
+                        {/* ══════════════════════════════════════════════ */}
+                        {upcomingJobs.length > 0 && (
+                            <>
+                                <div className="flex items-center justify-between mt-8 mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Upcoming Jobs</h2>
+                                        <span className="bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full">
+                                            {upcomingJobs.length} assigned
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    {upcomingJobs.map((job) => (
+                                        <div key={job._id} className="bg-surface-light dark:bg-surface-dark rounded-xl shadow-md border-l-4 border-l-blue-500 border-y border-r border-slate-200 dark:border-slate-700 overflow-hidden relative">
+                                            <div className="absolute top-4 right-4 bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                                                ASSIGNED
+                                            </div>
+                                            <div className="p-6">
+                                                <div className="flex flex-col sm:flex-row gap-6">
+                                                    <div className="flex-shrink-0">
+                                                        <div className="w-16 h-16 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                                            <span className="material-icons-round text-4xl text-slate-600 dark:text-slate-300">{getDeviceIcon(job.serviceType)}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="mb-4 pr-24">
+                                                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                                                                {job.deviceInfo?.brand && job.deviceInfo?.model
+                                                                    ? `${job.deviceInfo.brand} ${job.deviceInfo.model}`
+                                                                    : job.serviceType}
+                                                                {job.deviceInfo?.issue ? ` - ${job.deviceInfo.issue}` : ''}
+                                                            </h3>
+                                                            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 flex items-center gap-1">
+                                                                <span className="material-icons-round text-sm">event</span>
+                                                                Scheduled for {new Date(job.preferredDate).toLocaleDateString()}
+                                                            </p>
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                                            <div className="flex items-start gap-2">
+                                                                <span className="material-icons-round text-slate-400 text-sm mt-0.5">person</span>
+                                                                <div>
+                                                                    <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Customer</p>
+                                                                    <p className="text-sm font-medium">{job.user?.name || 'N/A'}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-start gap-2">
+                                                                <span className="material-icons-round text-slate-400 text-sm mt-0.5">location_on</span>
+                                                                <div>
+                                                                    <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Location</p>
+                                                                    <p className="text-sm font-medium">
+                                                                        {job.address
+                                                                            ? [job.address.street, job.address.city].filter(Boolean).join(', ')
+                                                                            : 'N/A'}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex flex-wrap items-center gap-3">
+                                                            <button
+                                                                onClick={() => handleStartJob(job._id)}
+                                                                disabled={actionLoading === job._id}
+                                                                className="bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50"
+                                                            >
+                                                                <span className="material-icons-round text-sm">play_arrow</span>
+                                                                {actionLoading === job._id ? 'Starting...' : 'Start Job'}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleRejectJob(job._id)}
+                                                                disabled={actionLoading === job._id}
+                                                                className="bg-white dark:bg-surface-dark border border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50"
+                                                            >
+                                                                <span className="material-icons-round text-sm">cancel</span>
+                                                                Reject
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
                         )}
 
                         {/* ══════════════════════════════════════════════ */}

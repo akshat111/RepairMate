@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import adminService from '../../services/adminService';
+import TechnicianDetailsModal from '../../components/TechnicianVerification/TechnicianDetailsModal';
 
 // ═══════════════════════════════════════════════════════
 // ADMIN TECHNICIANS
@@ -34,7 +35,7 @@ const AdminTechnicians = () => {
     const [technicians, setTechnicians] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [actionLoading, setActionLoading] = useState(null);
+    const [selectedTechnician, setSelectedTechnician] = useState(null);
 
     const fetchTechnicians = useCallback(async () => {
         setLoading(true);
@@ -56,31 +57,6 @@ const AdminTechnicians = () => {
         fetchTechnicians();
     }, [fetchTechnicians]);
 
-    const handleApprove = async (id) => {
-        setActionLoading(id);
-        try {
-            await adminService.approveTechnician(id);
-            fetchTechnicians();
-        } catch (err) {
-            setError(err.response?.data?.message || 'Approval failed');
-        } finally {
-            setActionLoading(null);
-        }
-    };
-
-    const handleReject = async (id) => {
-        const reason = prompt('Enter rejection reason:');
-        if (!reason) return;
-        setActionLoading(id);
-        try {
-            await adminService.rejectTechnician(id, reason);
-            fetchTechnicians();
-        } catch (err) {
-            setError(err.response?.data?.message || 'Rejection failed');
-        } finally {
-            setActionLoading(null);
-        }
-    };
 
     return (
         <div className="space-y-6">
@@ -97,8 +73,8 @@ const AdminTechnicians = () => {
                         key={tab.value}
                         onClick={() => setFilter(tab.value)}
                         className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${filter === tab.value
-                                ? 'bg-primary text-white shadow-sm'
-                                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                             }`}
                     >
                         {tab.label}
@@ -178,25 +154,15 @@ const AdminTechnicians = () => {
                                 )}
                             </div>
 
-                            {/* Actions for pending */}
-                            {tech.verificationStatus === 'pending' && (
-                                <div className="flex gap-2 pt-3 border-t border-slate-100">
-                                    <button
-                                        onClick={() => handleApprove(tech._id)}
-                                        disabled={actionLoading === tech._id}
-                                        className="flex-1 px-3 py-2 text-sm font-semibold rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-50"
-                                    >
-                                        {actionLoading === tech._id ? 'Processing...' : 'Approve'}
-                                    </button>
-                                    <button
-                                        onClick={() => handleReject(tech._id)}
-                                        disabled={actionLoading === tech._id}
-                                        className="flex-1 px-3 py-2 text-sm font-semibold rounded-lg bg-white text-red-600 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50"
-                                    >
-                                        Reject
-                                    </button>
-                                </div>
-                            )}
+                            {/* Actions */}
+                            <div className="pt-3 border-t border-slate-100">
+                                <button
+                                    onClick={() => setSelectedTechnician(tech)}
+                                    className="w-full px-3 py-2 text-sm font-semibold rounded-lg bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors border border-slate-200"
+                                >
+                                    View Details & Verify
+                                </button>
+                            </div>
 
                             {/* Rejection reason */}
                             {tech.verificationStatus === 'rejected' && tech.rejectionReason && (
@@ -207,6 +173,15 @@ const AdminTechnicians = () => {
                         </div>
                     ))}
                 </div>
+            )}
+
+            {/* Modal */}
+            {selectedTechnician && (
+                <TechnicianDetailsModal
+                    technician={selectedTechnician}
+                    onClose={() => setSelectedTechnician(null)}
+                    onUpdate={fetchTechnicians}
+                />
             )}
         </div>
     );

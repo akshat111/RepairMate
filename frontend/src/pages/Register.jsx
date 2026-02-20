@@ -131,6 +131,17 @@ const Register = () => {
                     Already have an account?{' '}
                     <Link to="/login" className="text-primary font-semibold hover:underline">Sign In</Link>
                 </p>
+
+                <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+                    <p className="text-sm font-medium text-slate-700 mb-2">Are you a repair professional?</p>
+                    <Link
+                        to="/register/technician"
+                        className="inline-flex items-center gap-2 text-primary font-bold hover:text-primary/80 transition-colors"
+                    >
+                        Join as a Technician
+                        <span className="material-icons text-sm">arrow_forward</span>
+                    </Link>
+                </div>
             </div>
         </div>
     );

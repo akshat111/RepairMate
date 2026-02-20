@@ -6,11 +6,14 @@ import api from './api';
 
 const technicianService = {
     // ── Profile ──────────────────────────────────────────
+    registerTechnician: (data) => api.post('/technicians/register', data),
     getMyProfile: () => api.get('/technicians/me'),
 
     // ── Assigned Bookings ────────────────────────────────
     getAssignedBookings: (params = {}) =>
         api.get('/bookings/assigned/me', { params }),
+    getOpenBookings: (params = {}) =>
+        api.get('/bookings/open', { params }),
 
     // ── Job Actions ──────────────────────────────────────
     acceptJob: (bookingId) => api.patch(`/bookings/${bookingId}/accept`),
@@ -27,3 +30,4 @@ const technicianService = {
 };
 
 export default technicianService;
+

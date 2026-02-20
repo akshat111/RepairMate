@@ -5,6 +5,7 @@ import AdminLayout from '../components/AdminLayout/AdminLayout';
 import Home from '../pages/Home';
 import Login from '../pages/Login';
 import Register from '../pages/Register';
+import TechnicianRegister from '../pages/TechnicianRegister';
 import Dashboard from '../pages/Dashboard';
 import Bookings from '../pages/Bookings';
 import Profile from '../pages/Profile';
@@ -37,6 +38,10 @@ const router = createBrowserRouter([
     {
         path: '/register',
         element: <Register />,
+    },
+    {
+        path: '/register/technician',
+        element: <TechnicianRegister />,
     },
     {
         path: '/unauthorized',
