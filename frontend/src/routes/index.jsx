@@ -11,6 +11,11 @@ import Bookings from '../pages/Bookings';
 import Profile from '../pages/Profile';
 import BookRepair from '../pages/BookRepair';
 import TechnicianDashboard from '../pages/TechnicianDashboard';
+import TechnicianLayout from '../components/TechnicianLayout/TechnicianLayout';
+import TechnicianJobs from '../pages/technician/TechnicianJobs';
+import TechnicianHistory from '../pages/technician/TechnicianHistory';
+import TechnicianInventory from '../pages/technician/TechnicianInventory';
+import TechnicianEarnings from '../pages/technician/TechnicianEarnings';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import AdminBookings from '../pages/admin/AdminBookings';
 import AdminTechnicians from '../pages/admin/AdminTechnicians';
@@ -102,24 +107,15 @@ const router = createBrowserRouter([
         element: <ProtectedRoute allowedRoles={['technician', 'admin']} />,
         children: [
             {
-                path: '/technician/dashboard',
-                element: <TechnicianDashboard />,
-            },
-            {
-                path: '/technician/jobs',
-                element: <TechnicianDashboard />,
-            },
-            {
-                path: '/technician/history',
-                element: <TechnicianDashboard />,
-            },
-            {
-                path: '/technician/inventory',
-                element: <TechnicianDashboard />,
-            },
-            {
-                path: '/technician/earnings',
-                element: <TechnicianDashboard />,
+                path: '/technician',
+                element: <TechnicianLayout />,
+                children: [
+                    { path: 'dashboard', element: <TechnicianDashboard /> },
+                    { path: 'jobs', element: <TechnicianJobs /> },
+                    { path: 'history', element: <TechnicianHistory /> },
+                    { path: 'inventory', element: <TechnicianInventory /> },
+                    { path: 'earnings', element: <TechnicianEarnings /> },
+                ],
             },
         ],
     },

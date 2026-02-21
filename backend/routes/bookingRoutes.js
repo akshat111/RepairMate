@@ -11,6 +11,7 @@ const {
     acceptBooking,
     rejectAssignment,
     completeBooking,
+    markAsPaid,
     getAllBookings,
     assignTechnician,
     updateBookingStatus,
@@ -58,6 +59,7 @@ router.patch(
     authorize('technician'),
     completeBooking
 );
+router.patch('/:id/paid', validate(schemas.mongoIdParam, 'params'), authorize('technician'), markAsPaid);
 
 // ── Admin routes ──────────────────────────────────────
 router.get('/', authorize('admin'), validate(schemas.booking.query, 'query'), getAllBookings);

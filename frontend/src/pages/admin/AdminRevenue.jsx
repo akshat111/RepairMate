@@ -60,10 +60,30 @@ const AdminRevenue = () => {
                 adminService.getRevenueTrend(period, 'daily'),
                 adminService.getPayouts(period),
             ]);
-            setRevenue(revRes.data?.data || revRes.data || null);
+            const revResData = revRes.data?.data || revRes.data || {};
+            const payoutResData = payoutRes.data?.data || payoutRes.data || {};
             const trendData = trendRes.data?.data || [];
-            setTrend(Array.isArray(trendData) ? trendData : []);
-            setPayouts(payoutRes.data?.data || payoutRes.data || null);
+
+            setRevenue({
+                totalRevenue: revResData.revenue?.completedRevenue || 0,
+                platformCommission: payoutResData.overview?.totalCommission || 0,
+                technicianPayouts: payoutResData.overview?.totalNetPayouts || 0,
+                completedJobs: payoutResData.overview?.earningCount || revResData.revenue?.totalBookings || 0,
+            });
+
+            setTrend(Array.isArray(trendData) ? trendData.map(t => ({
+                date: t._id,
+                revenue: t.revenue,
+                bookings: t.bookings,
+                commission: t.revenue * 0.15
+            })) : []);
+
+            const leaderboard = payoutResData.leaderboard || [];
+            setPayouts(leaderboard.map(p => ({
+                technicianName: p.user?.name || 'Technician',
+                completedJobs: p.bookingsCompleted,
+                totalEarnings: p.totalEarnings
+            })));
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to load revenue data');
         } finally {

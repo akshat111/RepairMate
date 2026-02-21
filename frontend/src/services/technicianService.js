@@ -22,6 +22,7 @@ const technicianService = {
     startJob: (bookingId) => api.patch(`/bookings/${bookingId}/start`),
     completeJob: (bookingId, data = {}) =>
         api.patch(`/bookings/${bookingId}/complete`, data),
+    markJobAsPaid: (bookingId) => api.patch(`/bookings/${bookingId}/paid`),
 
     // ── Earnings ─────────────────────────────────────────
     getEarningsDashboard: () => api.get('/earnings/dashboard'),

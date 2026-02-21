@@ -14,23 +14,6 @@ const errorHandler = require('./middleware/errorHandler');
 // ── Initialize Express app ────────────────────────────
 const app = express();
 
-// ── Security middleware ───────────────────────────────
-app.use(helmet()); // Set security-related HTTP headers
-app.use(hpp()); // Prevent HTTP parameter pollution
-
-// ── Rate limiting ─────────────────────────────────────
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per window
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-        success: false,
-        message: 'Too many requests, please try again later.',
-    },
-});
-app.use('/api', limiter);
-
 // ── CORS ──────────────────────────────────────────────
 const allowedOrigins = [
     'http://localhost:5173',
@@ -51,6 +34,23 @@ const corsOptions = {
     allowedHeaders: ['Content-Type', 'Authorization'],
 };
 app.use(cors(corsOptions));
+
+// ── Security middleware ───────────────────────────────
+app.use(helmet()); // Set security-related HTTP headers
+app.use(hpp()); // Prevent HTTP parameter pollution
+
+// ── Rate limiting ─────────────────────────────────────
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per window
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        success: false,
+        message: 'Too many requests, please try again later.',
+    },
+});
+app.use('/api', limiter);
 
 // ── Body parsers & cookies ────────────────────────────
 app.use(express.json({ limit: '10mb' }));

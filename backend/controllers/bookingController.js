@@ -317,13 +317,12 @@ const startBooking = asyncHandler(async (req, res) => {
         throw new AppError('Technician profile not found', 403);
     }
 
-    // ── Atomic start: status must be 'assigned', tech must match, must be paid ──
+    // ── Atomic start: status must be 'assigned', tech must match ──
     const booking = await Booking.findOneAndUpdate(
         {
             _id: req.params.id,
             status: 'assigned',
             technician: techProfile._id,
-            paymentStatus: 'paid',
         },
         {
             $set: {
@@ -346,12 +345,6 @@ const startBooking = asyncHandler(async (req, res) => {
         if (!exists) throw new AppError('Booking not found', 404);
         if (!exists.technician || exists.technician.toString() !== techProfile._id.toString()) {
             throw new AppError('You are not assigned to this booking', 403);
-        }
-        if (exists.paymentStatus !== 'paid') {
-            throw new AppError(
-                'Cannot start work on an unpaid booking. Payment must be completed first.',
-                402
-            );
         }
         throw new AppError(
             `Cannot start a booking with status '${exists.status}'`,
@@ -577,10 +570,92 @@ const completeBooking = asyncHandler(async (req, res) => {
         logger.warn('Earnings generation failed', { error: err.message, bookingId: req.params.id });
     }
 
+    // ── Automated Inventory Deduction ────
+    try {
+        const Inventory = require('../models/Inventory');
+
+        // Try to map serviceType to Inventory Category
+        const st = (booking.serviceType || '').toLowerCase();
+        let derivedCategory = null;
+        if (st.includes('screen')) derivedCategory = 'Screen';
+        else if (st.includes('battery')) derivedCategory = 'Battery';
+        else if (st.includes('charge') || st.includes('port')) derivedCategory = 'Charging Port';
+        else if (st.includes('camera')) derivedCategory = 'Camera';
+        else if (st.includes('speaker') || st.includes('audio')) derivedCategory = 'Speaker';
+        else if (st.includes('motherboard') || st.includes('board')) derivedCategory = 'Motherboard';
+
+        const deviceModel = booking.deviceInfo?.model || '';
+
+        if (deviceModel && derivedCategory) {
+            // Find an item matching the category and compatible with the specific device model
+            const matchingPart = await Inventory.findOne({
+                category: derivedCategory,
+                $or: [
+                    { compatibility: { $regex: new RegExp(deviceModel, 'i') } },
+                    { name: { $regex: new RegExp(deviceModel, 'i') } }
+                ],
+                quantity: { $gt: 0 }
+            });
+
+            if (matchingPart) {
+                matchingPart.quantity -= 1;
+                await matchingPart.save();
+                logger.info(`Automatically deducted 1 unit of ${matchingPart.name} for completed booking ${booking._id}`);
+            } else {
+                logger.info(`No matching inventory found to deduct for ${deviceModel} ${derivedCategory} (booking ${booking._id})`);
+            }
+        }
+    } catch (err) {
+        logger.error('Failed to deduct inventory automatically', { error: err.message, bookingId: booking._id });
+    }
+
     res.status(200).json({
         success: true,
         message: 'Booking completed',
         data: { booking, earning },
+    });
+});
+
+/**
+ * @desc    Technician marks booking as paid (cash or external payment)
+ * @route   PATCH /api/v1/bookings/:id/paid
+ * @access  Private (assigned technician)
+ */
+const markAsPaid = asyncHandler(async (req, res) => {
+    const techProfile = await Technician.findOne({ user: req.user._id });
+    if (!techProfile) {
+        throw new AppError('Technician profile not found', 403);
+    }
+
+    const booking = await Booking.findOneAndUpdate(
+        {
+            _id: req.params.id,
+            technician: techProfile._id,
+        },
+        {
+            $set: {
+                paymentStatus: 'paid',
+                isPaid: true,
+            },
+            $push: {
+                statusHistory: {
+                    changedBy: req.user._id,
+                    changedAt: new Date(),
+                    note: 'Technician marked payment as received',
+                },
+            },
+        },
+        { new: true }
+    );
+
+    if (!booking) {
+        throw new AppError('Booking not found or you are not assigned to it.', 404);
+    }
+
+    res.status(200).json({
+        success: true,
+        message: 'Payment marked as received.',
+        data: { booking },
     });
 });
 
@@ -841,6 +916,7 @@ module.exports = {
     acceptBooking,
     rejectAssignment,
     completeBooking,
+    markAsPaid,
     getAllBookings,
     assignTechnician,
     updateBookingStatus,
