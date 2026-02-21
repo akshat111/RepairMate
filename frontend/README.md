@@ -1,16 +1,108 @@
-# React + Vite
+# RepairMate — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The React + Vite frontend for the RepairMate device repair management platform. Provides dedicated portals for **Customers**, **Technicians**, and **Admins**.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🛠 Tech Stack
 
-## React Compiler
+| Package | Purpose |
+|---------|---------|
+| `react` v19 | UI framework |
+| `react-router-dom` v7 | Client-side routing with nested layouts |
+| `axios` | HTTP client (with token refresh interceptors) |
+| `tailwindcss` | Utility-first CSS |
+| `vite` | Dev server & build tool |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 📁 Project Structure
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```
+frontend/src/
+├── App.jsx                 # Root component
+├── main.jsx                # React entry point
+├── routes/index.jsx        # All routes with role-based guards
+├── context/
+│   └── AuthContext.jsx     # Global auth state (user, token, logout)
+├── services/               # Axios API call modules
+│   ├── api.js              # Base Axios instance + refresh interceptor
+│   ├── adminService.js     # Admin-specific API calls
+│   ├── bookingService.js   # Customer booking API calls
+│   ├── inventoryService.js # Inventory CRUD API calls
+│   └── technicianService.js# Technician job/earnings API calls
+├── components/
+│   ├── AdminLayout/        # Admin sidebar + header shell
+│   └── TechnicianLayout/   # Technician sidebar + header shell
+├── pages/
+│   ├── admin/              # Admin section pages
+│   │   ├── AdminDashboard.jsx
+│   │   ├── AdminBookings.jsx
+│   │   ├── AdminTechnicians.jsx
+│   │   ├── AdminInventory.jsx
+│   │   ├── AdminRevenue.jsx
+│   │   └── AdminSettings.jsx
+│   ├── technician/         # Technician section pages
+│   │   ├── TechnicianJobs.jsx
+│   │   ├── TechnicianHistory.jsx
+│   │   ├── TechnicianInventory.jsx
+│   │   └── TechnicianEarnings.jsx
+│   └── TechnicianDashboard.jsx
+└── utils/
+    └── formatters.js       # Currency / date helpers
+```
+
+---
+
+## 🔐 Routing & Role Guards
+
+Routes are protected by role-based `ProtectedRoute` wrappers:
+
+- **`/`** — Customer-facing (authenticated users)
+- **`/admin/*`** — Admin portal, wrapped in `AdminLayout`
+- **`/technician/*`** — Technician portal, wrapped in `TechnicianLayout`
+
+Unauthenticated users are redirected to `/login`.
+
+---
+
+## 🚀 Getting Started
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+> Runs at `http://localhost:5173` by default.
+
+### Environment Variable
+
+Create a `.env` file in the `frontend/` directory:
+
+```env
+VITE_API_BASE_URL=http://localhost:5000/api/v1
+```
+
+---
+
+## 🔑 Authentication Flow
+
+- On login, the backend issues an **access token** (short-lived) and a **refresh token** (stored in cookie).
+- The `api.js` Axios instance automatically attaches the access token to every request header.
+- On a `401 Unauthorized` response, the interceptor silently calls `/auth/refresh-token` and retries the original request.
+
+---
+
+## 📦 Available Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Start Vite dev server |
+| `npm run build` | Production build to `dist/` |
+| `npm run preview` | Preview the production build locally |
+| `npm run lint` | Run ESLint checks |
+
+---
+
+> Part of the [RepairMate](https://github.com/akshat111/RepairMate) project — Built with ❤️ by [Akshat](https://github.com/akshat111) and Antigravity
