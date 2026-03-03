@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import inventoryService from '../../services/inventoryService';
+import { formatCurrency } from '../../utils/helpers';
 
 // ═══════════════════════════════════════════════════════
 // ADMIN INVENTORY
@@ -157,7 +158,7 @@ const AdminInventory = () => {
                             <span className="material-icons text-2xl text-white">trending_up</span>
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-slate-900">₹{totalValue.toLocaleString()}</p>
+                            <p className="text-2xl font-bold text-slate-900">{formatCurrency(totalValue)}</p>
                             <p className="text-sm text-slate-500 mt-0.5">Total Value</p>
                         </div>
                     </div>
@@ -198,7 +199,7 @@ const AdminInventory = () => {
                                         <td className="px-6 py-4 font-semibold text-slate-900">
                                             {item.quantity}
                                         </td>
-                                        <td className="px-6 py-4 text-slate-600">₹{item.unitPrice}</td>
+                                        <td className="px-6 py-4 text-slate-600">{formatCurrency(item.unitPrice)}</td>
                                         <td className="px-6 py-4">
                                             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${item.quantity <= item.lowStockThreshold
                                                 ? 'bg-red-50 text-red-700 border-red-200'

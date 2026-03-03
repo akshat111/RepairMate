@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import technicianService from '../../services/technicianService';
+import { formatCurrency } from '../../utils/helpers';
 
-const formatCurrency = (amount) => {
-    if (amount == null) return '₹0';
-    return `₹${Number(amount).toLocaleString('en-IN')}`;
-};
+// Standardized via helpers
 
 const TechnicianEarnings = () => {
     const [earnings, setEarnings] = useState([]);
@@ -92,13 +90,13 @@ const TechnicianEarnings = () => {
                 </div>
                 {earnings.length > 0 ? (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
+                        <table className="w-full text-left text-sm min-w-max">
                             <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-medium border-b border-slate-100 dark:border-slate-800/50">
                                 <tr>
-                                    <th className="px-6 py-4">Job Info</th>
-                                    <th className="px-6 py-4">Date Completion</th>
-                                    <th className="px-6 py-4">Status</th>
-                                    <th className="px-6 py-4 text-right">Amount</th>
+                                    <th className="px-6 py-4 min-w-[150px]">Job Info</th>
+                                    <th className="px-6 py-4 min-w-[120px]">Date Completion</th>
+                                    <th className="px-6 py-4 min-w-[120px]">Status</th>
+                                    <th className="px-6 py-4 text-right min-w-[120px]">Amount</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
@@ -118,10 +116,10 @@ const TechnicianEarnings = () => {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase ${earning.status === 'paid'
-                                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                                    : earning.status === 'approved'
-                                                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                                                        : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                                : earning.status === 'approved'
+                                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                                                    : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
                                                 }`}>
                                                 <span className={`w-1.5 h-1.5 rounded-full ${earning.status === 'paid' ? 'bg-green-500' : earning.status === 'approved' ? 'bg-blue-500' : 'bg-amber-500'
                                                     }`}></span>

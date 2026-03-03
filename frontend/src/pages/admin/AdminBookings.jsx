@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import adminService from '../../services/adminService';
+import { formatCurrency } from '../../utils/helpers';
 
 // ═══════════════════════════════════════════════════════
 // ADMIN BOOKINGS
@@ -95,8 +96,8 @@ const AdminBookings = () => {
                         key={tab.value}
                         onClick={() => setActiveTab(tab.value)}
                         className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${activeTab === tab.value
-                                ? 'bg-primary text-white shadow-sm'
-                                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                             }`}
                     >
                         {tab.label}
@@ -135,17 +136,17 @@ const AdminBookings = () => {
                             <p className="text-sm text-slate-400 mt-1">Try changing the filter or check back later</p>
                         </div>
                     ) : (
-                        <table className="w-full text-sm">
+                        <table className="w-full text-sm min-w-max">
                             <thead>
                                 <tr className="text-left text-xs text-slate-500 uppercase tracking-wider bg-slate-50/80">
-                                    <th className="px-6 py-3 font-medium">ID</th>
-                                    <th className="px-6 py-3 font-medium">Service</th>
-                                    <th className="px-6 py-3 font-medium">Customer</th>
-                                    <th className="px-6 py-3 font-medium">Technician</th>
-                                    <th className="px-6 py-3 font-medium">Status</th>
-                                    <th className="px-6 py-3 font-medium">Payment</th>
-                                    <th className="px-6 py-3 font-medium">Date</th>
-                                    <th className="px-6 py-3 font-medium text-right">Amount</th>
+                                    <th className="px-6 py-3 font-medium min-w-[100px]">ID</th>
+                                    <th className="px-6 py-3 font-medium min-w-[120px]">Service</th>
+                                    <th className="px-6 py-3 font-medium min-w-[150px]">Customer</th>
+                                    <th className="px-6 py-3 font-medium min-w-[150px]">Technician</th>
+                                    <th className="px-6 py-3 font-medium min-w-[120px]">Status</th>
+                                    <th className="px-6 py-3 font-medium min-w-[100px]">Payment</th>
+                                    <th className="px-6 py-3 font-medium min-w-[120px]">Date</th>
+                                    <th className="px-6 py-3 font-medium text-right min-w-[100px]">Amount</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -177,7 +178,7 @@ const AdminBookings = () => {
                                                 : '—'}
                                         </td>
                                         <td className="px-6 py-4 text-right font-semibold text-slate-900">
-                                            {booking.estimatedCost != null ? `₹${booking.estimatedCost}` : '—'}
+                                            {booking.estimatedCost != null ? formatCurrency(booking.estimatedCost) : '—'}
                                         </td>
                                     </tr>
                                 ))}

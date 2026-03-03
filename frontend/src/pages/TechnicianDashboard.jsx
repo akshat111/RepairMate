@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import technicianService from '../services/technicianService';
+import { formatCurrency } from '../utils/helpers';
 
 // ═══════════════════════════════════════════════════════
 // TECHNICIAN DASHBOARD (OVERVIEW)
@@ -30,10 +31,7 @@ const formatDate = (dateStr) => {
     return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 };
 
-const formatCurrency = (amount) => {
-    if (amount == null) return '₹0';
-    return `₹${Number(amount).toLocaleString('en-IN')}`;
-};
+// Standardized via helpers
 
 const TechnicianDashboardOverview = () => {
     const navigate = useNavigate();

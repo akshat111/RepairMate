@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import adminService from '../../services/adminService';
+import { formatCurrency } from '../../utils/helpers';
 
 // ═══════════════════════════════════════════════════════
 // ADMIN DASHBOARD
@@ -154,7 +155,7 @@ const AdminDashboard = () => {
                 <StatCard
                     icon="account_balance_wallet"
                     label="Total Revenue"
-                    value={metrics.totalRevenue != null ? `₹${metrics.totalRevenue.toLocaleString()}` : null}
+                    value={metrics.totalRevenue != null ? formatCurrency(metrics.totalRevenue) : null}
                     trend={metrics.revenueGrowth}
                     color="bg-gradient-to-br from-emerald-500 to-emerald-600"
                     loading={loading}
@@ -236,7 +237,7 @@ const AdminDashboard = () => {
                                                 : '—'}
                                         </td>
                                         <td className="px-6 py-4 text-right font-semibold text-slate-900">
-                                            {booking.estimatedCost != null ? `₹${booking.estimatedCost}` : '—'}
+                                            {booking.estimatedCost != null ? formatCurrency(booking.estimatedCost) : '—'}
                                         </td>
                                     </tr>
                                 ))}

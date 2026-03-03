@@ -13,28 +13,74 @@ const DEVICE_TYPES = [
     { id: 'smartwatch', label: 'Smartwatch', icon: 'watch' },
 ];
 
-const BRANDS = [
-    { id: 'apple', label: 'Apple', letter: 'A' },
-    { id: 'samsung', label: 'Samsung', letter: 'S' },
-    { id: 'google', label: 'Google', letter: 'G' },
-    { id: 'oneplus', label: 'OnePlus', letter: '1+' },
-];
-
-const MODELS = {
-    apple: ['iPhone 15 Pro Max', 'iPhone 15 Pro', 'iPhone 15', 'iPhone 14 Pro Max', 'iPhone 14 Pro', 'iPhone 14', 'iPhone 13 Pro Max', 'iPhone 13 Pro', 'iPhone 13 Mini', 'iPad Air', 'iPad Pro', 'MacBook Pro', 'MacBook Air'],
-    samsung: ['Galaxy S24 Ultra', 'Galaxy S24+', 'Galaxy S24', 'Galaxy S23 Ultra', 'Galaxy S23', 'Galaxy Z Fold 5', 'Galaxy Z Flip 5', 'Galaxy A54', 'Galaxy Tab S9'],
-    google: ['Pixel 8 Pro', 'Pixel 8', 'Pixel 7 Pro', 'Pixel 7a', 'Pixel 7', 'Pixel Watch 2'],
-    oneplus: ['OnePlus 12', 'OnePlus 12R', 'OnePlus 11', 'OnePlus Nord 3', 'OnePlus Open'],
+const BRANDS = {
+    mobile: [
+        { id: 'apple', label: 'Apple', letter: 'A' },
+        { id: 'samsung', label: 'Samsung', letter: 'S' },
+        { id: 'google', label: 'Google', letter: 'G' },
+        { id: 'oneplus', label: 'OnePlus', letter: '1+' },
+    ],
+    laptop: [
+        { id: 'apple', label: 'Apple', letter: 'A' },
+        { id: 'dell', label: 'Dell', letter: 'D' },
+        { id: 'hp', label: 'HP', letter: 'H' },
+        { id: 'lenovo', label: 'Lenovo', letter: 'L' },
+    ],
+    smartwatch: [
+        { id: 'apple', label: 'Apple', letter: 'A' },
+        { id: 'samsung', label: 'Samsung', letter: 'S' },
+        { id: 'boat', label: 'boAt', letter: 'B' },
+        { id: 'fitbit', label: 'Fitbit', letter: 'F' },
+    ]
 };
 
-const ISSUES = [
-    { id: 'screen', label: 'Screen Damage', icon: 'broken_image', price: 2499 },
-    { id: 'battery', label: 'Battery Issue', icon: 'battery_alert', price: 1499 },
-    { id: 'charging', label: 'Charging Port', icon: 'power', price: 999 },
-    { id: 'water', label: 'Water Damage', icon: 'water_drop', price: 1999 },
-    { id: 'speaker', label: 'Speaker/Mic', icon: 'volume_off', price: 1299 },
-    { id: 'camera', label: 'Camera Issue', icon: 'camera_alt', price: 1799 },
-];
+const MODELS = {
+    mobile: {
+        apple: ['iPhone 15 Pro Max', 'iPhone 15 Pro', 'iPhone 15', 'iPhone 14 Pro Max', 'iPhone 14 Pro', 'iPhone 14', 'iPhone 13 Pro Max', 'iPhone 13 Pro', 'iPhone 13 Mini'],
+        samsung: ['Galaxy S24 Ultra', 'Galaxy S24+', 'Galaxy S24', 'Galaxy S23 Ultra', 'Galaxy S23', 'Galaxy Z Fold 5', 'Galaxy Z Flip 5', 'Galaxy A54'],
+        google: ['Pixel 8 Pro', 'Pixel 8', 'Pixel 7 Pro', 'Pixel 7a', 'Pixel 7'],
+        oneplus: ['OnePlus 12', 'OnePlus 12R', 'OnePlus 11', 'OnePlus Nord 3', 'OnePlus Open'],
+    },
+    laptop: {
+        apple: ['MacBook Pro 16"', 'MacBook Pro 14"', 'MacBook Pro 13"', 'MacBook Air 15"', 'MacBook Air 13"'],
+        dell: ['XPS 15', 'XPS 13', 'Inspiron 15', 'Alienware m16'],
+        hp: ['Spectre x360', 'Envy 16', 'Pavilion 15', 'Omen Transcend'],
+        lenovo: ['ThinkPad X1 Carbon', 'IdeaPad Slim 5', 'Legion Pro 5i', 'Yoga 7i'],
+    },
+    smartwatch: {
+        apple: ['Apple Watch Ultra 2', 'Apple Watch Series 9', 'Apple Watch Series 8', 'Apple Watch SE'],
+        samsung: ['Galaxy Watch 6 Classic', 'Galaxy Watch 6', 'Galaxy Watch 5 Pro', 'Galaxy Watch 5'],
+        boat: ['Lunar Pro', 'Xtend', 'Wave Call', 'Storm Call', 'Ultima Connect'],
+        fitbit: ['Sense 2', 'Versa 4', 'Charge 6'],
+    }
+};
+
+const ISSUES = {
+    mobile: [
+        { id: 'screen', label: 'Screen Damage', icon: 'broken_image', price: 2499 },
+        { id: 'battery', label: 'Battery Issue', icon: 'battery_alert', price: 1499 },
+        { id: 'charging', label: 'Charging Port', icon: 'power', price: 999 },
+        { id: 'water', label: 'Water Damage', icon: 'water_drop', price: 1999 },
+        { id: 'speaker', label: 'Speaker/Mic', icon: 'volume_off', price: 1299 },
+        { id: 'camera', label: 'Camera Issue', icon: 'camera_alt', price: 1799 },
+    ],
+    laptop: [
+        { id: 'screen', label: 'Screen Damage', icon: 'broken_image', price: 4999 },
+        { id: 'battery', label: 'Battery Issue', icon: 'battery_alert', price: 3499 },
+        { id: 'keyboard', label: 'Keyboard Replacement', icon: 'keyboard', price: 2499 },
+        { id: 'trackpad', label: 'Trackpad Issue', icon: 'mouse', price: 1999 },
+        { id: 'water', label: 'Water Damage', icon: 'water_drop', price: 3999 },
+        { id: 'software', label: 'OS/Software Recovery', icon: 'code', price: 1499 },
+    ],
+    smartwatch: [
+        { id: 'screen', label: 'Screen Damage', icon: 'broken_image', price: 1999 },
+        { id: 'battery', label: 'Battery Issue', icon: 'battery_alert', price: 1299 },
+        { id: 'charging', label: 'Charging Issue', icon: 'power', price: 899 },
+        { id: 'water', label: 'Water Damage', icon: 'water_drop', price: 1499 },
+        { id: 'sensor', label: 'Sensor Failure', icon: 'monitor_heart', price: 1799 },
+        { id: 'strap', label: 'Strap Replacement', icon: 'watch', price: 499 },
+    ]
+};
 
 const TIME_SLOTS = [
     { id: 'morning', label: 'Morning', time: '9:00 AM – 12:00 PM', icon: 'wb_sunny' },
@@ -83,11 +129,23 @@ const BookRepair = () => {
     const [submitError, setSubmitError] = useState(null);
 
     // ── Derived values ────────────────────────────────
-    const availableModels = MODELS[brand] || [];
+    const availableBrands = BRANDS[deviceType] || BRANDS.mobile;
+    const availableModels = MODELS[deviceType]?.[brand] || [];
+    const availableIssues = ISSUES[deviceType] || ISSUES.mobile;
     const selectedModel = model || (availableModels.length > 0 ? availableModels[0] : '');
 
+    // ── Handle device type change ─────────────────────
+    const handleDeviceTypeChange = (newType) => {
+        setDeviceType(newType);
+        // Automatically select the first brand for the new device type
+        const newBrands = BRANDS[newType] || BRANDS.mobile;
+        setBrand(newBrands[0]?.id || '');
+        setModel('');
+        setSelectedIssues([]); // Reset issues on device change
+    };
+
     const issueTotal = selectedIssues.reduce((sum, issueId) => {
-        const issue = ISSUES.find((i) => i.id === issueId);
+        const issue = availableIssues.find((i) => i.id === issueId);
         return sum + (issue?.price || 0);
     }, 0);
     const estimatedTotal = issueTotal + (issueTotal > 0 ? SERVICE_CHARGE : 0);
@@ -121,14 +179,14 @@ const BookRepair = () => {
         setIsSubmitting(true);
         setSubmitError(null);
         try {
-            const issueLabels = selectedIssues.map((id) => ISSUES.find((i) => i.id === id)?.label).filter(Boolean);
+            const issueLabels = selectedIssues.map((id) => availableIssues.find((i) => i.id === id)?.label).filter(Boolean);
             await bookingService.create({
                 serviceType: deviceType,
                 issueType: issueLabels.join(', '),
                 urgency,
                 description: description || issueLabels.join(', '),
                 deviceInfo: {
-                    brand: BRANDS.find((b) => b.id === brand)?.label || brand,
+                    brand: availableBrands.find((b) => b.id === brand)?.label || brand,
                     model: selectedModel,
                     issue: issueLabels.join(', '),
                 },
@@ -180,28 +238,28 @@ const BookRepair = () => {
                     {/* Left Column: Booking Flow */}
                     <div className="lg:col-span-8 space-y-8">
                         {/* Progress Stepper */}
-                        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-                            <div className="flex items-center justify-between relative">
+                        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-slate-200 overflow-x-auto">
+                            <div className="flex items-center justify-between relative min-w-[280px]">
                                 <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-slate-100 -z-0" />
                                 {STEPS.map((step, idx) => (
                                     <div
                                         key={step}
-                                        className="relative z-10 flex flex-col items-center group cursor-pointer"
+                                        className="relative z-10 flex flex-col items-center group cursor-pointer w-1/4"
                                         onClick={() => idx < currentStep && setCurrentStep(idx)}
                                     >
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${idx < currentStep
+                                        <div className={`w-8 h-8 sm:w-10 sm:h-10 text-sm sm:text-base rounded-full flex items-center justify-center font-bold transition-all ${idx < currentStep
                                             ? 'bg-primary text-white shadow-lg shadow-primary/30'
                                             : idx === currentStep
                                                 ? 'bg-primary text-white shadow-lg shadow-primary/30'
                                                 : 'bg-white border-2 border-slate-200 text-slate-400'
                                             }`}>
                                             {idx < currentStep ? (
-                                                <span className="material-icons text-sm">check</span>
+                                                <span className="material-icons text-sm sm:text-base">check</span>
                                             ) : (
                                                 idx + 1
                                             )}
                                         </div>
-                                        <span className={`mt-2 text-xs font-${idx <= currentStep ? 'semibold' : 'medium'} ${idx <= currentStep ? 'text-primary' : 'text-slate-400'
+                                        <span className={`mt-2 text-[10px] sm:text-xs text-center font-${idx <= currentStep ? 'semibold' : 'medium'} ${idx <= currentStep ? 'text-primary' : 'text-slate-400'
                                             }`}>
                                             {step}
                                         </span>
@@ -226,7 +284,7 @@ const BookRepair = () => {
                                                 type="radio"
                                                 name="device_type"
                                                 checked={deviceType === dt.id}
-                                                onChange={() => setDeviceType(dt.id)}
+                                                onChange={() => handleDeviceTypeChange(dt.id)}
                                                 className="peer sr-only"
                                             />
                                             <div className="h-full p-4 rounded-xl border-2 border-slate-200 peer-checked:border-primary peer-checked:bg-primary/5 hover:border-primary/50 transition-all flex flex-col items-center justify-center text-center">
@@ -243,7 +301,7 @@ const BookRepair = () => {
                                 {/* Brand Grid */}
                                 <h3 className="text-sm uppercase tracking-wider font-semibold text-slate-500 mb-4">Select Brand</h3>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {BRANDS.map((b) => (
+                                    {availableBrands.map((b) => (
                                         <label key={b.id} className="relative cursor-pointer group">
                                             <input
                                                 type="radio"
@@ -288,7 +346,7 @@ const BookRepair = () => {
                                     <p className="text-slate-500">Select one or more issues with your device.</p>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                    {ISSUES.map((issue) => {
+                                    {availableIssues.map((issue) => {
                                         const isSelected = selectedIssues.includes(issue.id);
                                         return (
                                             <button
@@ -474,7 +532,7 @@ const BookRepair = () => {
                                         </div>
                                         <div>
                                             <h3 className="font-bold text-slate-800">{selectedModel || 'Select a model'}</h3>
-                                            <p className="text-sm text-slate-500 mt-1">{BRANDS.find((b) => b.id === brand)?.label} · {DEVICE_TYPES.find((d) => d.id === deviceType)?.label}</p>
+                                            <p className="text-sm text-slate-500 mt-1">{availableBrands.find((b) => b.id === brand)?.label} · {DEVICE_TYPES.find((d) => d.id === deviceType)?.label}</p>
                                             {currentStep > 0 && (
                                                 <button onClick={() => setCurrentStep(0)} className="text-xs text-primary font-medium hover:underline mt-2">Change device</button>
                                             )}
@@ -485,7 +543,7 @@ const BookRepair = () => {
                                     <div className="space-y-3">
                                         {selectedIssues.length > 0 ? (
                                             selectedIssues.map((issueId) => {
-                                                const issue = ISSUES.find((i) => i.id === issueId);
+                                                const issue = availableIssues.find((i) => i.id === issueId);
                                                 return (
                                                     <div key={issueId} className="flex justify-between items-center text-sm">
                                                         <div className="flex items-center gap-2 text-slate-600">

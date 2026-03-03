@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import adminService from '../../services/adminService';
+import { formatCurrency } from '../../utils/helpers';
 
 // ═══════════════════════════════════════════════════════
 // ADMIN REVENUE / FINANCE
@@ -133,14 +134,14 @@ const AdminRevenue = () => {
                 <StatCard
                     icon="account_balance_wallet"
                     label="Total Revenue"
-                    value={revenue?.totalRevenue != null ? `₹${revenue.totalRevenue.toLocaleString()}` : null}
+                    value={revenue?.totalRevenue != null ? formatCurrency(revenue.totalRevenue) : null}
                     color="bg-gradient-to-br from-emerald-500 to-emerald-600"
                     loading={loading}
                 />
                 <StatCard
                     icon="percent"
                     label="Platform Commission"
-                    value={revenue?.platformCommission != null ? `₹${revenue.platformCommission.toLocaleString()}` : null}
+                    value={revenue?.platformCommission != null ? formatCurrency(revenue.platformCommission) : null}
                     sublabel="15% commission rate"
                     color="bg-gradient-to-br from-blue-500 to-blue-600"
                     loading={loading}
@@ -148,7 +149,7 @@ const AdminRevenue = () => {
                 <StatCard
                     icon="payments"
                     label="Technician Payouts"
-                    value={revenue?.technicianPayouts != null ? `₹${revenue.technicianPayouts.toLocaleString()}` : null}
+                    value={revenue?.technicianPayouts != null ? formatCurrency(revenue.technicianPayouts) : null}
                     color="bg-gradient-to-br from-violet-500 to-violet-600"
                     loading={loading}
                 />
@@ -183,13 +184,13 @@ const AdminRevenue = () => {
                             <p className="text-sm text-slate-500 mt-2">No revenue data for this period</p>
                         </div>
                     ) : (
-                        <table className="w-full text-sm">
+                        <table className="w-full text-sm min-w-max">
                             <thead>
                                 <tr className="text-left text-xs text-slate-500 uppercase tracking-wider bg-slate-50/80">
-                                    <th className="px-6 py-3 font-medium">Date</th>
-                                    <th className="px-6 py-3 font-medium">Revenue</th>
-                                    <th className="px-6 py-3 font-medium">Bookings</th>
-                                    <th className="px-6 py-3 font-medium">Commission</th>
+                                    <th className="px-6 py-3 font-medium min-w-[120px]">Date</th>
+                                    <th className="px-6 py-3 font-medium min-w-[150px]">Revenue</th>
+                                    <th className="px-6 py-3 font-medium min-w-[120px]">Bookings</th>
+                                    <th className="px-6 py-3 font-medium min-w-[150px]">Commission</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -199,13 +200,13 @@ const AdminRevenue = () => {
                                             {formatDate(row._id) || formatDate(row.date) || `Day ${i + 1}`}
                                         </td>
                                         <td className="px-6 py-4 font-semibold text-slate-900">
-                                            ₹{(row.revenue || row.totalRevenue || 0).toLocaleString()}
+                                            {formatCurrency(row.revenue || row.totalRevenue || 0)}
                                         </td>
                                         <td className="px-6 py-4 text-slate-600">
                                             {row.count || row.bookings || 0}
                                         </td>
                                         <td className="px-6 py-4 text-emerald-600 font-medium">
-                                            ₹{(row.commission || row.platformCommission || 0).toLocaleString()}
+                                            {formatCurrency(row.commission || row.platformCommission || 0)}
                                         </td>
                                     </tr>
                                 ))}
@@ -236,7 +237,7 @@ const AdminRevenue = () => {
                                             </div>
                                         </div>
                                         <p className="font-semibold text-slate-900">
-                                            ₹{(payout.totalEarnings || payout.amount || 0).toLocaleString()}
+                                            {formatCurrency(payout.totalEarnings || payout.amount || 0)}
                                         </p>
                                     </div>
                                 ))}

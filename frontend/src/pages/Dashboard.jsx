@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import bookingService from '../services/bookingService';
+import { formatCurrency } from '../utils/helpers';
 
 // ═══════════════════════════════════════════════════════
 // HELPERS
@@ -41,22 +42,19 @@ const getDeviceIcon = (booking) => {
 
 const formatDate = (dateStr) => {
     if (!dateStr) return '—';
-    return new Date(dateStr).toLocaleDateString('en-US', {
+    return new Date(dateStr).toLocaleDateString('en-IN', {
         month: 'short', day: 'numeric', year: 'numeric',
     });
 };
 
 const formatTime = (dateStr) => {
     if (!dateStr) return '';
-    return new Date(dateStr).toLocaleTimeString('en-US', {
+    return new Date(dateStr).toLocaleTimeString('en-IN', {
         hour: 'numeric', minute: '2-digit', hour12: true,
     });
 };
 
-const formatCost = (amount) => {
-    if (amount == null || amount === 0) return '$0.00';
-    return `$${Number(amount).toFixed(2)}`;
-};
+const formatCost = (amount) => formatCurrency(amount);
 
 const getDeviceName = (booking) => {
     if (booking.deviceInfo?.brand && booking.deviceInfo?.model)

@@ -46,7 +46,7 @@ const BookingForm = () => {
                                     type="radio"
                                     value="mobile"
                                     checked={device === 'mobile'}
-                                    onChange={() => { setDevice('mobile'); setBrand('Apple'); }}
+                                    onChange={() => { setDevice('mobile'); setBrand(BRANDS.mobile[0]); }}
                                 />
                                 <div className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-slate-50 peer-checked:border-primary peer-checked:bg-primary/5 transition-all group-hover:border-primary/50">
                                     <span className="material-icons text-slate-400 peer-checked:text-primary mb-1">smartphone</span>
@@ -60,7 +60,7 @@ const BookingForm = () => {
                                     type="radio"
                                     value="laptop"
                                     checked={device === 'laptop'}
-                                    onChange={() => { setDevice('laptop'); setBrand('Apple'); }}
+                                    onChange={() => { setDevice('laptop'); setBrand(BRANDS.laptop[0]); }}
                                 />
                                 <div className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-slate-50 peer-checked:border-primary peer-checked:bg-primary/5 transition-all group-hover:border-primary/50">
                                     <span className="material-icons text-slate-400 peer-checked:text-primary mb-1">laptop_mac</span>
@@ -74,7 +74,7 @@ const BookingForm = () => {
                                     type="radio"
                                     value="tablet"
                                     checked={device === 'tablet'}
-                                    onChange={() => { setDevice('tablet'); setBrand('Apple'); }}
+                                    onChange={() => { setDevice('tablet'); setBrand(BRANDS.tablet[0]); }}
                                 />
                                 <div className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-slate-50 peer-checked:border-primary peer-checked:bg-primary/5 transition-all group-hover:border-primary/50">
                                     <span className="material-icons text-slate-400 peer-checked:text-primary mb-1">tablet_mac</span>

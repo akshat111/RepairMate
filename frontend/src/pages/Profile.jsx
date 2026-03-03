@@ -144,7 +144,7 @@ const Profile = () => {
                                 <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Member Since</p>
                                 <p className="text-sm font-medium text-slate-900">
                                     {profile?.createdAt
-                                        ? new Date(profile.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                                        ? new Date(profile.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
                                         : '—'}
                                 </p>
                             </div>
