@@ -30,12 +30,58 @@ const OnlineDot = ({ isOnline }) => (
     <span className={`inline-block w-2.5 h-2.5 rounded-full mr-2 ${isOnline ? 'bg-emerald-400 shadow-sm shadow-emerald-300' : 'bg-slate-300'}`} />
 );
 
+// ── Delete Confirmation Modal ─────────────────────────
+const DeleteConfirmModal = ({ technician, onConfirm, onCancel, loading }) => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                    <span className="material-icons text-red-500">delete_forever</span>
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">Delete Technician</h3>
+            </div>
+            <p className="text-sm text-slate-600 mb-1">
+                Are you sure you want to delete{' '}
+                <span className="font-semibold text-slate-900">
+                    {technician?.user?.name || 'this technician'}
+                </span>?
+            </p>
+            <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-3">
+                ⚠️ This will permanently delete their Technician record and User account.
+            </p>
+            <div className="flex gap-3 mt-5">
+                <button
+                    onClick={onCancel}
+                    disabled={loading}
+                    className="flex-1 px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                >
+                    Cancel
+                </button>
+                <button
+                    onClick={onConfirm}
+                    disabled={loading}
+                    className="flex-1 px-4 py-2 text-sm font-semibold rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                    {loading ? (
+                        <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    ) : (
+                        <span className="material-icons text-base">delete</span>
+                    )}
+                    {loading ? 'Deleting...' : 'Delete'}
+                </button>
+            </div>
+        </div>
+    </div>
+);
+
 const AdminTechnicians = () => {
     const [filter, setFilter] = useState('');
     const [technicians, setTechnicians] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedTechnician, setSelectedTechnician] = useState(null);
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
     const fetchTechnicians = useCallback(async () => {
         setLoading(true);
@@ -57,6 +103,20 @@ const AdminTechnicians = () => {
         fetchTechnicians();
     }, [fetchTechnicians]);
 
+    const handleDeleteConfirm = async () => {
+        if (!deleteTarget) return;
+        setDeleteLoading(true);
+        try {
+            await adminService.deleteTechnician(deleteTarget._id);
+            setDeleteTarget(null);
+            fetchTechnicians();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to delete technician');
+            setDeleteTarget(null);
+        } finally {
+            setDeleteLoading(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -72,10 +132,11 @@ const AdminTechnicians = () => {
                     <button
                         key={tab.value}
                         onClick={() => setFilter(tab.value)}
-                        className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${filter === tab.value
-                            ? 'bg-primary text-white shadow-sm'
-                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                            }`}
+                        className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${
+                            filter === tab.value
+                                ? 'bg-primary text-white shadow-sm'
+                                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                        }`}
                     >
                         {tab.label}
                     </button>
@@ -87,7 +148,9 @@ const AdminTechnicians = () => {
                 <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
                     <span className="material-icons text-red-500">error_outline</span>
                     <p className="text-sm text-red-700">{error}</p>
-                    <button onClick={fetchTechnicians} className="ml-auto text-sm font-medium text-red-600 hover:text-red-800">Retry</button>
+                    <button onClick={fetchTechnicians} className="ml-auto text-sm font-medium text-red-600 hover:text-red-800">
+                        Retry
+                    </button>
                 </div>
             )}
 
@@ -116,7 +179,10 @@ const AdminTechnicians = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {technicians.map((tech) => (
-                        <div key={tech._id} className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300">
+                        <div
+                            key={tech._id}
+                            className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300"
+                        >
                             {/* Header */}
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center gap-3">
@@ -139,13 +205,17 @@ const AdminTechnicians = () => {
                                         {tech.isOnline ? 'Online' : 'Offline'}
                                     </span>
                                     {tech.isAvailable && (
-                                        <span className="ml-3 text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-medium">Available</span>
+                                        <span className="ml-3 text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-medium">
+                                            Available
+                                        </span>
                                     )}
                                 </div>
                                 {tech.specializations?.length > 0 && (
                                     <div className="flex flex-wrap gap-1.5">
                                         {tech.specializations.map((s, i) => (
-                                            <span key={i} className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded font-medium capitalize">{s}</span>
+                                            <span key={i} className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded font-medium capitalize">
+                                                {s}
+                                            </span>
                                         ))}
                                     </div>
                                 )}
@@ -155,19 +225,28 @@ const AdminTechnicians = () => {
                             </div>
 
                             {/* Actions */}
-                            <div className="pt-3 border-t border-slate-100">
+                            <div className="pt-3 border-t border-slate-100 flex gap-2">
                                 <button
                                     onClick={() => setSelectedTechnician(tech)}
-                                    className="w-full px-3 py-2 text-sm font-semibold rounded-lg bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors border border-slate-200"
+                                    className="flex-1 px-3 py-2 text-sm font-semibold rounded-lg bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors border border-slate-200"
                                 >
-                                    View Details & Verify
+                                    View &amp; Verify
+                                </button>
+                                <button
+                                    onClick={() => setDeleteTarget(tech)}
+                                    className="px-3 py-2 text-sm font-semibold rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors border border-red-200"
+                                    title="Delete Technician"
+                                >
+                                    <span className="material-icons text-base">delete</span>
                                 </button>
                             </div>
 
                             {/* Rejection reason */}
                             {tech.verificationStatus === 'rejected' && tech.rejectionReason && (
                                 <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-100">
-                                    <p className="text-xs text-red-600"><span className="font-semibold">Reason:</span> {tech.rejectionReason}</p>
+                                    <p className="text-xs text-red-600">
+                                        <span className="font-semibold">Reason:</span> {tech.rejectionReason}
+                                    </p>
                                 </div>
                             )}
                         </div>
@@ -175,12 +254,22 @@ const AdminTechnicians = () => {
                 </div>
             )}
 
-            {/* Modal */}
+            {/* View Details Modal */}
             {selectedTechnician && (
                 <TechnicianDetailsModal
                     technician={selectedTechnician}
                     onClose={() => setSelectedTechnician(null)}
                     onUpdate={fetchTechnicians}
+                />
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {deleteTarget && (
+                <DeleteConfirmModal
+                    technician={deleteTarget}
+                    onConfirm={handleDeleteConfirm}
+                    onCancel={() => setDeleteTarget(null)}
+                    loading={deleteLoading}
                 />
             )}
         </div>

@@ -53,6 +53,12 @@ const approveTechnician = (id) =>
 const rejectTechnician = (id, reason) =>
     api.patch(`/technicians/${id}/reject`, { reason });
 
+const getTechnicians = (params = {}) =>
+    api.get('/admin/technicians', { params });
+
+const deleteTechnician = (id) =>
+    api.delete(`/admin/technicians/${id}`);
+
 // ── User Management ──────────────────────────────────
 const getCustomers = (params = {}) =>
     api.get('/admin/customers', { params });
@@ -75,6 +81,8 @@ export default {
     getTechnician,
     approveTechnician,
     rejectTechnician,
+    getTechnicians,
+    deleteTechnician,
     getCustomers,
     deleteCustomer,
 };
